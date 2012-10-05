@@ -40,23 +40,3 @@ let debug1 filename =
     print_syntax (Parser.exp Lexer.token (Lexing.from_channel inchan)) 0 ()
   with e -> (close_in inchan; raise e)
 
-(*
-mincamlコンパイラ内のコードと依存関係のあるプログラムを一緒にコンパイルするには、
- - まずMakefileの[SOURCES]に追加。
- - OcamlMakefileにより、依存関係を解決し、[._d], [._bcdi]に記入。
-  ( ._d/[file].d	: [file].cmo の依存関係
-    ._bcdi/[file].di	: [file].cmi の依存関係
-  コマンドocamldepが関わってる?)
- - 上の依存関係から導かれる順序に基づいて、[byte-code]オプションならocamlc、[native-code]オプションならocamloptでコンパイル。
-
-以下のコマンドで、ocaml interpreter上にロードできるライブラリを生成
-make lib_generate => mincaml_lib.cma
-
-<例>
-# #load "mincaml_lib.cma";;
-# #use "print_debug.ml";;
-val type_to_string : 'a -> string = <fun>
-val print_syntax : Syntax.t -> int -> unit -> unit = <fun>
-val debug1 : string -> unit = <fun>
-
-*)
