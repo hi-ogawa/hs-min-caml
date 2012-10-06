@@ -1259,7 +1259,6 @@ rawuninstall:
 clean::
 	rm -f $(TARGETS) $(TRASH)
 	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
-	rm -f *.cma
 
 .PHONY:	cleanup
 cleanup::
@@ -1275,4 +1274,4 @@ clean-all:: clean clean-doc
 
 .PHONY: nobackup
 nobackup:
-	rm -f *.bak *~ *.dup
+	rm -f *.bak *~ *.dup *.cma

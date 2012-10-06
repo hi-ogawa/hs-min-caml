@@ -25,14 +25,18 @@ alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
 inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
 closure.mli closure.ml asm.mli asm.ml virtual.mli virtual.ml \
 simm.mli simm.ml regAlloc.mli regAlloc.ml emit.mli emit.ml \
-main.mli main.ml print_debug.ml
+main.mli main.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_main.ml
+
+
 
 # mincamlコンパイラのバイトコード 
 # 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
 OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  lexer.cmo \
  typing.cmo  kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
  inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo  virtual.cmo \
- simm.cmo  regAlloc.cmo  #emit.cmo  main.cmo
+ simm.cmo  regAlloc.cmo \
+ debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_main.cmo \
+ #emit.cmo  main.cmo
 
 # ↓テストプログラムが増えたら、これも増やす
 TESTS = print sum-tail gcd sum fib ack even-odd \
@@ -76,7 +80,7 @@ release: min-caml.html
 	rm -fr tmp ; mkdir tmp ; cd tmp ; cvs -d:ext:sumii@min-caml.cvs.sf.net://cvsroot/min-caml export -Dtomorrow min-caml ; tar cvzf ../min-caml.tar.gz min-caml ; cd .. ; rm -fr tmp
 	cp Makefile stub.c SPARC/libmincaml.S min-caml.html min-caml.tar.gz ../htdocs/
 
-lib_generate:
-	ocamlc -a $(OBJECTS) -o mincaml_lib.cma
+for_debug:
+	ocamlc $(OBJECTS) -o mincaml_debug
 
 include OCamlMakefile
