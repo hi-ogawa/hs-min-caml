@@ -1259,6 +1259,7 @@ rawuninstall:
 clean::
 	rm -f $(TARGETS) $(TRASH)
 	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
+	rm -f *.cma
 
 .PHONY:	cleanup
 cleanup::
