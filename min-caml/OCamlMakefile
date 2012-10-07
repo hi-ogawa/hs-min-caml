@@ -1259,6 +1259,7 @@ rawuninstall:
 clean::
 	rm -f $(TARGETS) $(TRASH)
 	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
+	rm -f mincaml_debug mincaml_lib.cma
 
 .PHONY:	cleanup
 cleanup::
@@ -1274,4 +1275,4 @@ clean-all:: clean clean-doc
 
 .PHONY: nobackup
 nobackup:
-	rm -f *.bak *~ *.dup *.cma
+	rm -f *.bak *~ *.dup

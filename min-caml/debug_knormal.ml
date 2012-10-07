@@ -1,9 +1,9 @@
 open Printf
 open KNormal
-open Debug_util
+open Debug_util	(* p_d, argsToStr, tyToStr*)
 
 (* KNormal.t -> string *)
-let rec knoToStr exp =
+let knoToStr exp =
   match exp with
     | Unit -> "UNIT: ()"
     | Int(i)  -> sprintf "INT: %i" i
@@ -42,7 +42,7 @@ let rec p_kno exp d =
   | LetTuple (_,x1,e1)
     -> p_d (d+1) ("--var1: " ^ x1 ^ "\n"); p_d (d+1) "--e1--\n"; p_kno e1 (d+1)
   | App (f,xs) | ExtFunApp (f,xs)
-    -> p_d (d+1) ("--func: " ^ f ^ "\n"); p_d (d+1) "--args--\n"; p_d (d+1) ((String.concat ", " xs) ^ "\n")
+    -> p_d (d+1) ("--func: " ^ f ^ "\n"); p_d (d+1) (sprintf "--args: %s\n" (String.concat ", " xs))
   | Tuple xs
     -> p_d (d+1) (String.concat ", " xs))
 

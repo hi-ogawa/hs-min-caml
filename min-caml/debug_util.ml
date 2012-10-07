@@ -19,3 +19,7 @@ let rec p_d depth str =
   for l = 1 to depth do print_string "      "; done;
   print_string str
 
+(* Id.l -> string(Id.t)*)
+let labelOff fl =
+  match fl with
+  | Id.L f -> f

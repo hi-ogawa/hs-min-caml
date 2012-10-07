@@ -15,9 +15,9 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | IfLE of Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
-  | MakeCls of (Id.t * Type.t) * closure * t
-  | AppCls of Id.t * Id.t list
-  | AppDir of Id.l * Id.t list
+  | MakeCls of (Id.t * Type.t) * closure * t	(*knormalから追加*)
+  | AppCls of Id.t * Id.t list			(*knormalから追加*)
+  | AppDir of Id.l * Id.t list			(*knormalから追加*)
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
   | Get of Id.t * Id.t
@@ -37,7 +37,7 @@ let rec fv = function
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
   | MakeCls((x, t), { entry = l; actual_fv = ys }, e) -> S.remove x (S.union (S.of_list ys) (fv e))
-  | AppCls(x, ys) -> S.of_list (x :: ys)
+  | AppCls(x, ys) -> S.of_list (x :: ys)	(* closureの関数適用は値として関数を返すことになるので(curry化的な)?? *)
   | AppDir(_, xs) | Tuple(xs) -> S.of_list xs		(* ラベルとしての出現はスルーする *)
   | LetTuple(xts, y, e) -> S.add y (S.diff (fv e) (S.of_list (List.map fst xts)))
   | Put(x, y, z) -> S.of_list [x; y; z]
@@ -70,8 +70,11 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
       let known' = S.add x known in
       let e1' = g (M.add_list yts env') known' e1 in
       (* 本当に自由変数がなかったか、変換結果e1'を確認する *)
-      (* 注意: e1'にx自身が変数として出現する場合はclosureが必要!	(再帰関数とゆうことか?)
+      (* 注意: e1'にx自身が変数として出現する場合はclosureが必要!	
          (thanks to nuevo-namasute and azounoman; test/cls-bug2.ml参照) *)
+      (*再帰関数とゆうことか? 
+	-> いやそうではなくて関数として適用されたxの出現ならばAppDirより(known'にxが入ってると仮定しているので)xはFVにならない
+           適用されずに,Varとして出現したらFVになる *)
       let zs = S.diff (fv e1') (S.of_list (List.map fst yts)) in
       let known', e1' =
 	(* e1'に自由変数が存在しなかったとき *)
@@ -82,21 +85,21 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
 	 toplevel := toplevel_backup;			 (* e1のクロージャ変換でtoplevelが変わりうるのでbackupに戻してから *) 
 	 let e1' = g (M.add_list yts env') known e1 in	 (* xを[known']から除いた[known]でもう一度クロージャー変換をする *)
 	 known, e1') in
-      let zs = S.elements (S.diff (fv e1') (S.add x (S.of_list (List.map fst yts)))) in (* 自由変数のリスト *)
+      let zs = S.elements (S.diff (fv e1') (S.add x (S.of_list (List.map fst yts)))) in (* 自由変数のリスト(fv から xとystを引いている) (さっき作ったzsとの違いに注意!)*)
       let zts = List.map (fun z -> (z, M.find z env')) zs in (* ここで自由変数zの型を引くために引数envが必要 *)
       toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; (* トップレベル関数を追加 *)
       let e2' = g env' known' e2 in
       (* xが(ラベルではなく)変数としてe2'に出現するか (関数を値として返すか、もしくは、完全に引数を全部適用するか、のどっちか)*)
       if S.mem x (fv e2')
       then (* 関数としての値 *)
-	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') (* 出現していたら削除しない *)
+	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2')
       else (* 引数が適用されているとき *)
 	(Format.eprintf "eliminating closure(s) %s@." x;
-	 e2') (* 出現しなければMakeClsを削除 *)
+	 e2')
   | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
       Format.eprintf "directly applying %s@." x;
       AppDir(Id.L(x), ys)
-  | KNormal.App(f, xs) -> AppCls(f, xs)
+  | KNormal.App(f, xs) -> AppCls(f, xs)		(*/test/adder.ml: curry化して、それを束縛した変数(Tf2)はknownに入ってないので、AppClsになる。*)
   | KNormal.Tuple(xs) -> Tuple(xs)
   | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
   | KNormal.Get(x, y) -> Get(x, y)
@@ -104,6 +107,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.ExtArray(x) -> ExtArray(Id.L(x))
   | KNormal.ExtFunApp(x, ys) -> AppDir(Id.L("min_caml_" ^ x), ys)
 
+(* KNormal.t -> Prog of (fundef list * t) *)
 let f e =
   toplevel := [];
   let e' = g M.empty S.empty e in
