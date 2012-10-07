@@ -1,7 +1,10 @@
 %{
 (* parserが利用する変数、関数、型などの定義 *)
 open Syntax
+open Lexing
 let addtyp x = (x, Type.gentyp ())
+let showPos {pos_fname = f; pos_lnum = l; pos_bol = b; pos_cnum = c} =
+  (l, c-b, c)
 %}
 
 /* 字句を表すデータ型の定義 (caml2html: parser_token) */
@@ -133,11 +136,13 @@ exp: /* 一般の式 (caml2html: parser_exp) */
 | ARRAY_CREATE simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
-| error
-    { failwith
-	(Printf.sprintf "parse error near characters %d-%d"
-	   (Parsing.symbol_start ())
-	   (Parsing.symbol_end ())) }
+| error			/* splecial token for error handling */
+    { let (ls, os, cs) = showPos (symbol_start_pos ()) in
+      let (_, _, ce) = showPos (symbol_end_pos ()) in
+      failwith
+	(Printf.sprintf "parse error near characters %d-%d, position (%d, %d)"
+	   cs ce ls os)
+    }
 
 fundef:
 | IDENT formal_args EQUAL exp
