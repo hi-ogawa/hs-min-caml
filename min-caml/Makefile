@@ -18,9 +18,9 @@ $(RESULT): debug-code top
 clean:: nobackup
 
 # ↓もし実装を改造したら、それに合わせて変える
-# print_debug.ml を追加
 SOURCES = float.c type.ml id.ml m.ml s.ml \
-syntax.ml parser.mly lexer.mll typing.mli typing.ml kNormal.mli kNormal.ml \
+syntax.ml parser.mly parser_pos.mly lexer.mll lexer_pos.mll typing.mli typing.ml typing_pos.ml \
+kNormal.mli kNormal.ml \
 alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
 inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
 closure.mli closure.ml asm.mli asm.ml virtual.mli virtual.ml \
@@ -29,17 +29,19 @@ main.mli main.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_closure.ml
 
 
 
-# mincamlコンパイラのバイトコード 
-# 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
-OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  lexer.cmo \
- typing.cmo  kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
+# デバッグ用につくる実行ファイル(mincaml_debug)のためのソース
+OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  parser_pos.cmo \
+ lexer.cmo lexer_pos.cmo \
+ typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
  inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo  virtual.cmo \
  simm.cmo  regAlloc.cmo \
  debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo \
  debug_main.cmo 
 
-FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  lexer.cmo \
- typing.cmo  kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
+# 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
+FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo parser_pos.cmo\
+ lexer.cmo lexer_pos.cmo \
+ typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
  inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo  virtual.cmo \
  simm.cmo  regAlloc.cmo \
  debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo
