@@ -23,9 +23,9 @@ syntax.ml parser.mly parser_pos.mly lexer.mll lexer_pos.mll typing.mli typing.ml
 kNormal.mli kNormal.ml \
 alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
 inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
-closure.mli closure.ml asm.mli asm.ml virtual.mli virtual.ml \
-simm.mli simm.ml regAlloc.mli regAlloc.ml emit.mli emit.ml \
-main.mli main.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_closure.ml debug_main.ml
+closure.mli closure.ml asm.mli asm.ml asmMy.ml virtual.mli virtual.ml virtualMy.ml \
+simm.mli simm.ml simmMy.ml regAlloc.mli regAlloc.ml regAllocMy.ml emit.mli emit.ml emitMy.ml \
+ mainMy.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_closure.ml debug_main.ml
 
 
 
@@ -33,8 +33,8 @@ main.mli main.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_closure.ml
 OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  parser_pos.cmo \
  lexer.cmo lexer_pos.cmo \
  typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
- inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo  virtual.cmo \
- simm.cmo  regAlloc.cmo \
+ inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo asmMy.cmo virtual.cmo \
+ virtualMy.cmo simm.cmo simmMy.cmo regAlloc.cmo regAllocMy.cmo \
  debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo \
  debug_main.cmo 
 
@@ -42,8 +42,8 @@ OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  parser_pos.cmo \
 FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo parser_pos.cmo\
  lexer.cmo lexer_pos.cmo \
  typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
- inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo  virtual.cmo \
- simm.cmo  regAlloc.cmo \
+ inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo asmMy.cmo virtual.cmo \
+ virtualMy.cmo simm.cmo simmMy.cmo regAlloc.cmo regAllocMy.cmo \
  debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo
 
 # ↓テストプログラムが増えたら、これも増やす

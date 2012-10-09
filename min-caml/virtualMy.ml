@@ -1,6 +1,6 @@
 (* translation into SPARC assembly with infinite number of virtual registers *)
 
-open Asm
+open AsmMy
 
 (* data : (Id.l * float) list の ref*)
 let data = ref [] (* 浮動小数点数の定数テーブル (caml2html: virtual_data) *)
