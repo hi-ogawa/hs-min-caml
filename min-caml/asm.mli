@@ -1,1 +1,1 @@
-PowerPC/asm.mli
+SPARC/asm.mli

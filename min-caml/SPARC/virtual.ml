@@ -2,8 +2,25 @@
 
 open Asm
 
+(* data : (Id.l * float) list の ref*)
 let data = ref [] (* 浮動小数点数の定数テーブル (caml2html: virtual_data) *)
-
+(*
+  | Closure.MakeCls((x, t), { Closure.entry = l; Closure.actual_fv = ys }, e2) -> (* クロージャの生成 (caml2html: virtual_makecls) *)
+      (* Closureのアドレスをセットしてから、自由変数の値をストア *)
+      let e2' = g (M.add x t env) e2 in
+      let offset, store_fv =
+	expand
+	  (List.map (fun y -> (y, M.find y env)) ys)
+	  (4, e2')
+	  (fun y offset store_fv -> seq(StDF(y, x, C(offset)), store_fv))
+	  (fun y _ offset store_fv -> seq(St(y, x, C(offset)), store_fv)) in
+      Let((x, t), Mov(reg_hp),
+	  Let((reg_hp, Type.Int), Add(reg_hp, C(align offset)),
+	      let z = Id.genid "l" in
+	      Let((z, Type.Int), SetL(l),
+		  seq(St(z, x, C(0)),
+		      store_fv))))
+*)
 let classify xts ini addf addi =
   List.fold_left
     (fun acc (x, t) ->
@@ -14,6 +31,7 @@ let classify xts ini addf addi =
     ini
     xts
 
+(* intとfloatで変数を型によって分ける*)
 let separate xts =
   classify
     xts
@@ -26,11 +44,12 @@ let expand xts ini addf addi =
     xts
     ini
     (fun (offset, acc) x ->
-      let offset = align offset in
+      let offset = align offset in	(* floatは8bit境界に置く *)
       (offset + 8, addf x offset acc))
     (fun (offset, acc) x t ->
       (offset + 4, addi x t offset acc))
 
+(* Closure.t -> Asm.t*)
 let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
   | Closure.Unit -> Ans(Nop)
   | Closure.Int(i) -> Ans(Set(i))
@@ -45,6 +64,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
 	  data := (l, d) :: !data;
 	  l in
       let x = Id.genid "l" in
+      (* floatはテーブル(メモリ上)にあるので、そのアドレスをxに保存し、その後ロードして返り値となる*)
       Let((x, Type.Int), SetL(l), Ans(LdDF(x, C(0))))
   | Closure.Neg(x) -> Ans(Neg(x))
   | Closure.Add(x, y) -> Ans(Add(x, V(y)))
@@ -67,7 +87,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
   | Closure.Let((x, t1), e1, e2) ->
       let e1' = g env e1 in
       let e2' = g (M.add x t1 env) e2 in
-      concat e1' (x, t1) e2'
+      concat e1' (x, t1) e2'	(* letの入れ子をなくす *)
   | Closure.Var(x) ->
       (match M.find x env with
       | Type.Unit -> Ans(Nop)
@@ -79,15 +99,16 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
       let offset, store_fv =
 	expand
 	  (List.map (fun y -> (y, M.find y env)) ys)
-	  (4, e2')
+	  (4, e2')	(*e2'の最後にMov命令ありそう(クロージャの先頭アドレスを返すとか)*)
 	  (fun y offset store_fv -> seq(StDF(y, x, C(offset)), store_fv))
 	  (fun y _ offset store_fv -> seq(St(y, x, C(offset)), store_fv)) in
+      (* ヒープを広げて *)
       Let((x, t), Mov(reg_hp),
 	  Let((reg_hp, Type.Int), Add(reg_hp, C(align offset)),
 	      let z = Id.genid "l" in
 	      Let((z, Type.Int), SetL(l),
-		  seq(St(z, x, C(0)),
-		      store_fv))))
+		  seq(St(z, x, C(0)),		(* ヒープの0番目にlabelから参照する関数のアドレスを保存 *)
+		      store_fv)))) (* e2'を実行*)
   | Closure.AppCls(x, ys) ->
       let (int, float) = separate (List.map (fun y -> (y, M.find y env)) ys) in
       Ans(CallCls(x, int, float))
@@ -99,20 +120,23 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
       let (offset, store) =
 	expand
 	  (List.map (fun x -> (x, M.find x env)) xs)
-	  (0, Ans(Mov(y)))
+	  (0, Ans(Mov(y)))	(* 最終的にはyの位置を返す *)
 	  (fun x offset store -> seq(StDF(x, y, C(offset)), store))
 	  (fun x _ offset store -> seq(St(x, y, C(offset)), store)) in
+      (* yにヒープの位置を入れて(Move reg_hp -> y)、reg_hpをタプルの分だけ(それプラスalignment)動かし、その中にタプルの要素をストアする命令列(store)を置いていく *)
       Let((y, Type.Tuple(List.map (fun x -> M.find x env) xs)), Mov(reg_hp),
 	  Let((reg_hp, Type.Int), Add(reg_hp, C(align offset)),
 	      store))
   | Closure.LetTuple(xts, y, e2) ->
       let s = Closure.fv e2 in
+      (* xiにy(tupleの先頭アドレス)からオフセット計算した位置の値をロードする
+	 最後はe2で返ってくる値を返す*)
       let (offset, load) =
 	expand
 	  xts
 	  (0, g (M.add_list xts env) e2)
 	  (fun x offset load ->
-	    if not (S.mem x s) then load else (* [XX] a little ad hoc optimization *)
+	    if not (S.mem x s) then load else (* [XX] a little ad hoc optimization *)(*???????*)
 	    fletd(x, LdDF(y, C(offset)), load))
 	  (fun x t offset load ->
 	    if not (S.mem x s) then load else (* [XX] a little ad hoc optimization *)
@@ -140,12 +164,13 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
 	  Let((offset, Type.Int), SLL(y, C(2)),
 	      Ans(St(z, x, V(offset))))
       | _ -> assert false)
-  | Closure.ExtArray(Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
+  | Closure.ExtArray(Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))(*labelのセット*)
 
 (* 関数の仮想マシンコード生成 (caml2html: virtual_h) *)
+(* Closure.fundef -> Asm.fundef *)
 let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts; Closure.body = e } =
   let (int, float) = separate yts in
-  let (offset, load) =
+  let (offset, load) =(*closureのaddrからoffset計算しながらz1,z2..にloadしてeを計算 *)
     expand
       zts
       (4, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
@@ -157,8 +182,35 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts
   | _ -> assert false
 
 (* プログラム全体の仮想マシンコード生成 (caml2html: virtual_f) *)
+(* Closure.prog (fundefs', e') -> Asm.prog (float_data, fundefs, e) *)
 let f (Closure.Prog(fundefs, e)) =
   data := [];
   let fundefs = List.map h fundefs in
   let e = g M.empty e in
   Prog(!data, fundefs, e)
+
+
+(*
+Closure.Tuple(xs) ==>> Asm.t型 
+  Tuple (x1, x2, x3, ..)
+=> y <- newid (タプルの値たちが入る先頭アドレス)
+   xts <- map とか何とか xs
+   expand [(x1, t2); (x2, t2); (x3, t3); ..]  (0, Ans(Move(y))) f_float f2_other
+=> foldlやら何やらで
+   (0, Ans(Move(y)))
+=> (0+4, seq(St(x1, y, 0), Ans(Move(y))))
+=> (8+8, seq(StDF(x2, y, 8), seq')	   (* x2がfloatならば8bit境界に配置!!(4だったのが8になる) *)
+=> ...
+=> (off, seq(St....., Ans(Move(y))))
+
+
+Closure.MakeCls ==>> Asm.t型
+  MakeCls((x,t), {entry = l; actual_fv = ys}, e2)
+=> foldlとかでysを上手くストア
+  (4, e2')
+=> (4+4, seq(StDF(y1, x, 4), e2')
+=> (4+4+8, seq(StDF(y2, x, 4+4), seq(StDF(y1, x, 4), e2')))
+=> ..
+=> (o, seqs)
+=> Let( -ヒープ広げる-(元のヒープはxに), Let( xの先頭にはl(entry)をストア, Let(それ以降にはfvをストアして、e2'を実行。)))
+*)

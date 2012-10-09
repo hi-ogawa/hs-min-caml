@@ -1,1 +1,1 @@
-PowerPC/globals.s
+SPARC/globals.s

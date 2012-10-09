@@ -1,1 +1,1 @@
-PowerPC/Makefile
+SPARC/Makefile

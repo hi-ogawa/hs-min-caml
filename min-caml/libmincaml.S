@@ -1,1 +1,1 @@
-PowerPC/libmincaml.S
+SPARC/libmincaml.S

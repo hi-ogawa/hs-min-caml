@@ -23,7 +23,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.t
-  | ExtFunApp of Id.t * Id.t list
+  | ExtFunApp of Id.t * Id.t list		(*arrayは関数適用に変換*)
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
@@ -153,7 +153,7 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 	(fun y ->
 	  let e2', t2 = g (M.add_list xts env) e2 in
 	  LetTuple(xts, y, e2'), t2)
-  | Syntax.Array(e1, e2) ->
+  | Syntax.Array(e1, e2) ->		(* arrayは関数適用に変換 *)
       insert_let (g env e1)
 	(fun x ->
 	  let _, t2 as g_e2 = g env e2 in

@@ -149,6 +149,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
       | _ -> assert false
 
 (* プログラム全体の仮想マシンコード生成 *)
+(* Closure.prog -> Asm.prog *)
 let f (Closure.Prog (fundefs, e)) =
   data := [];
   let fundefs = List.map h fundefs in
