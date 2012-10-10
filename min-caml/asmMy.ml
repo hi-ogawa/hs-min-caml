@@ -17,7 +17,7 @@ and exp = (* 一つ一つの命令に対応する式 (caml2html: sparcasm_exp) *)
   | St of Id.t * Id.t * id_or_imm	(* store *)
   | FMovD of Id.t			(* double precision op *)
   | FNegD of Id.t
-  | FAddD of Id.t * Id.t		(* float演算は即値ないよ *)
+  | FAddD of Id.t * Id.t		(* float演算は即値ない *)
   | FSubD of Id.t * Id.t
   | FMulD of Id.t * Id.t
   | FDivD of Id.t * Id.t
@@ -28,7 +28,7 @@ and exp = (* 一つ一つの命令に対応する式 (caml2html: sparcasm_exp) *)
   | IfEq of Id.t * id_or_imm * t * t
   | IfLE of Id.t * id_or_imm * t * t
   | IfGE of Id.t * id_or_imm * t * t (* 左右対称ではないので必要 *) (* どっからGE?? *)
-  | IfFEq of Id.t * Id.t * t * t	(* float比較の条件分岐っぽい *)
+  | IfFEq of Id.t * Id.t * t * t	(* float比較の条件分岐っぽい, 使う?? *)
   | IfFLE of Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list * Id.t list	(* クロージャは変数に格納されたアドレス中の関数(自由変数もその辺りにある)を呼び出す*)

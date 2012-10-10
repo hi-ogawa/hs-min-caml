@@ -13,14 +13,14 @@ let trans inchan =
   let Closure.Prog (fundefs, exp4) = Closure.f exp3 in
   let AsmMy.Prog(floats, fundefs', exp5) = VirtualMy.f (Closure.Prog(fundefs, exp4)) in
   let AsmMy.Prog(floats', fundefs'', exp6) = RegAllocMy.f (AsmMy.Prog(floats,fundefs',exp5)) in
-  printf "\n*Typing*  =>\n\n";
-  Debug_syntax.p_syn exp2 0;
-  printf "\n*KNormal*  =>\n\n";
-  Debug_knormal.p_kno exp3 0;
-  printf "\n*Closure*  =>\n\n";
-  Debug_closure.p_clo exp4 0;
-  printf "\n*TopLevel Functions*  =>\n\n";
-  Debug_closure.p_topl fundefs;
+  (* printf "\n*Typing*  =>\n\n"; *)
+  (* Debug_syntax.p_syn exp2 0; *)
+  (* printf "\n*KNormal*  =>\n\n"; *)
+  (* Debug_knormal.p_kno exp3 0; *)
+  (* printf "\n*Closure*  =>\n\n"; *)
+  (* Debug_closure.p_clo exp4 0; *)
+  (* printf "\n*TopLevel Functions*  =>\n\n"; *)
+  (* Debug_closure.p_topl fundefs; *)
   (floats', fundefs'', exp6)
     
 

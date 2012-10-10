@@ -38,17 +38,21 @@ stack pointer(reg_sp)	%i0					%r29
 heap pointer(reg_hp)	%i1					(%r28)
 return addres(reg_ra)	%o7					%r31
 
-関数の引数		%i2 - 全部, %f0 - 全部			r2 - 全部, f0 - 全部
-関数の戻り値		%i2, %f0				r2, f0
-closure pointer(reg_cl)	%o5					r27
+関数の引数		%i2 - 全部, %f0 - 全部			%r2 - 全部, %f0 - 全部
+関数の戻り値		%i2, %f0				%r2, %f0
+closure pointer(reg_cl)	%o5					%r20
+swap reg		%o4					%r19
 
-補足								r0は常にゼロ
+補足								r0は常にゼロ, r1はアセンブリ
 			caller-saveやら謎(使うものは退避?)	Hi, Lo レジスタ使う?(整数乗算、除算の結果)
 								(シフトで代用できる疑惑)
+								r20: closure
+
+			関数呼び出しに伴いスタックはアドレスの大きい方に伸ばしていく								
 
 
 (13) subi命令がないので、即値の引き算はaddiuで代用。
-
-
-どこでやってるか分からないけど
-(??) 関数呼び出し後の遅延スロットは外す
+SLL のレジスタオペランドどうする	<= array中の計算のための即値オフセットしかないから大丈夫
+SetLどうする (FLoat table, MakeCls, ExtArrayで必要) <= load address 擬似命令で対応
+Ld, LdDF, St, StDF のレジスタオペランドどうする(配列中の計算で必要となる)	<= 事前に足せばOK
+関数呼び出し後の遅延スロットは外す <= はずした
