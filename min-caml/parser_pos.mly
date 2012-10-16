@@ -6,8 +6,31 @@ let addtyp x = (x, Type.gentyp ())
 let showPos {pos_fname = f; pos_lnum = l; pos_bol = b; pos_cnum = c} =
   (l, c-b, c)
 
-(* 位置をexpからposへのMapで持っても比較とかめんどそう? *)
-(* let expPosRef : ref = *)
+let rec is_log2 x = 
+  if x = 0 then	false
+  else if x = 1 then true
+  else (if x > 0 && x mod 2 = 0 then is_log2 (x / 2) else false)
+let rec log2 x =
+  if x = 1 then	0
+  else (assert (x mod 2 = 0); (log2 (x / 2)) + 1)
+  	
+let is_log2_exp e =
+	match e with
+	| Int' n when is_log2 n -> true
+	| Neg' (Int' n, _) when is_log2 n -> true
+	| _ -> false
+	
+let sll_of_mul e1 e2 pos =
+	match e2 with
+	| Int' n -> SLL' (e1, Int' (log2 n), pos) 
+	| Neg' (Int' n, _) -> SLL' (Neg'(e1, pos), Int' (log2 n), pos)
+	| _ -> assert false
+	
+let sra_of_div e1 e2 pos =
+	match e2 with
+	| Int' n -> SRA' (e1, Int' (log2 n), pos)
+	| Neg' (Int' n, _) -> SRA' (Neg' (e1, pos), Int' (log2 n), pos)
+	| _ -> assert false
 %}
 
 /* 字句を表すデータ型の定義 (caml2html: parser_token) */
@@ -17,6 +40,8 @@ let showPos {pos_fname = f; pos_lnum = l; pos_bol = b; pos_cnum = c} =
 %token NOT
 %token MINUS
 %token PLUS
+%token AST
+%token SLASH
 %token MINUS_DOT
 %token PLUS_DOT
 %token AST_DOT
@@ -51,7 +76,7 @@ let showPos {pos_fname = f; pos_lnum = l; pos_bol = b; pos_cnum = c} =
 %left COMMA
 %left EQUAL LESS_GREATER LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left PLUS MINUS PLUS_DOT MINUS_DOT
-%left AST_DOT SLASH_DOT
+%left AST SLASH AST_DOT SLASH_DOT
 %right prec_unary_minus
 %left prec_app
 %left DOT
@@ -93,6 +118,16 @@ exp: /* 一般の式 (caml2html: parser_exp) */
     { Add'($1, $3, rhs_start_pos 2) }
 | exp MINUS exp
     { Sub'($1, $3, rhs_start_pos 2) }
+| exp AST exp
+	{ if is_log2_exp $3
+	  then sll_of_mul $1 $3 (rhs_start_pos 2)
+	  else App' ((Var' "mul"), [$1; $3], rhs_start_pos 2)
+	}
+| exp SLASH exp
+	{ if is_log2_exp $3
+	  then sra_of_div $1 $3 (rhs_start_pos 2)
+	  else App' ((Var' "div"), [$1; $3], rhs_start_pos 2)
+	}
 | exp EQUAL exp
     { Eq'($1, $3, rhs_start_pos 2) }
 | exp LESS_GREATER exp
@@ -152,6 +187,8 @@ fundef:
     { { name' = addtyp $1; args' = $2; body' = $4 } }
 
 formal_args:
+| LPAREN RPAREN
+    { [(Id.gentmp Type.Unit), Type.Unit] }
 | IDENT formal_args
     { addtyp $1 :: $2 }
 | IDENT

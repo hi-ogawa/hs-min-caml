@@ -3,12 +3,12 @@ open AsmMy
 (* for register coalescing *)
 (* [XXX] Call¤¬¤¢¤Ã¤¿¤é¡¢¤½¤³¤«¤éÀè¤ÏÌµ°ÕÌ£¤È¤¤¤¦¤«µÕ¸ú²Ì¤Ê¤Î¤ÇÄÉ¤ï¤Ê¤¤¡£
          ¤½¤Î¤¿¤á¤Ë¡ÖCall¤¬¤¢¤Ã¤¿¤«¤É¤¦¤«¡×¤òÊÖ¤êÃÍ¤ÎÂè1Í×ÁÇ¤Ë´Þ¤á¤ë¡£ *)
-let rec target' src (dest, t) = function
+let rec target' src (dest, t) = function	(* ´Ø¿ô¸Æ¤Ó½Ð¤·¤¬¤¢¤Ã¤¿¤étrue¤òÊÖ¤¹ *)
   | Mov(x) when x = src && is_reg dest ->
       assert (t <> Type.Unit);
       assert (t <> Type.Float);
       false, [dest]
-  | FMovD(x) when x = src && is_reg dest ->
+  | FMov(x) when x = src && is_reg dest ->
       assert (t = Type.Float);
       false, [dest]
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) | IfGE(_, _, e1, e2)
@@ -26,7 +26,7 @@ let rec target' src (dest, t) = function
   | _ -> false, []
 and target src dest = function (* register targeting (caml2html: regalloc_target) *)
   | Ans(exp) -> target' src dest exp
-  | Let(xt, exp, e) ->
+  | Let(xt, exp, e) ->			(*exp¤¬´Ø¿ô¸Æ¤Ó½Ð¤·¤Î»þ¤Ïe¤ò¸«¤Ê¤¤*)
       let c1, rs1 = target' src xt exp in
       if c1 then true, rs1 else
       let c2, rs2 = target src dest e in
@@ -39,9 +39,10 @@ and target_args src all n = function (* auxiliary function for Call *)
 type alloc_result = (* alloc¤Ë¤ª¤¤¤Æspilling¤¬¤¢¤Ã¤¿¤«¤É¤¦¤«¤òÉ½¤¹¥Ç¡¼¥¿·¿ *)
   | Alloc of Id.t (* allocated register *)
   | Spill of Id.t (* spilled variable *)
-let rec alloc dest cont regenv x t =
+let rec alloc dest cont regenv x t =	(* Let¤ÎÌÜÅªÊÑ¿ô¤Ç¤¢¤ëx¤òreg¤Ë³ä¤êÅö¤Æ¤Ë¹Ô¤¯ *)
   (* allocate a register or spill a variable *)
-  assert (not (M.mem x regenv));
+  (* Printf.printf "debug_print(alloc): %s\n" x; *)
+  (* assert (not (M.mem x regenv)); *)		(* ????? *)
   let all =
     match t with
     | Type.Unit -> ["%g0"] (* dummy *)
@@ -51,7 +52,7 @@ let rec alloc dest cont regenv x t =
   if is_reg x then Alloc(x) else
   let free = fv cont in
   try
-    let (c, prefer) = target x dest cont in
+    let (c, prefer) = target x dest cont in	(* c(boolÃÍ)¤Ï»È¤ï¤Ê¤¤ *)
     let live = (* À¸¤­¤Æ¤¤¤ë¥ì¥¸¥¹¥¿ *)
       List.fold_left
         (fun live y ->
@@ -60,8 +61,8 @@ let rec alloc dest cont regenv x t =
           with Not_found -> live)
         S.empty
         free in
-    let r = (* ¤½¤¦¤Ç¤Ê¤¤¥ì¥¸¥¹¥¿¤òÃµ¤¹ *)
-      List.find
+    let r = (* »È¤¨¤ë¥ì¥¸¥¹¥¿¤òÃµ¤¹ *)
+      List.find					(* ¤³¤³¤ÇNot_found¤¬½Ð¤ë¤«¤â *)
         (fun r -> not (S.mem r live))
         (prefer @ all) in
     (* Format.eprintf "allocated %s to %s@." x r; *)
@@ -74,7 +75,7 @@ let rec alloc dest cont regenv x t =
 	  not (is_reg y) &&
           try List.mem (M.find y regenv) all
           with Not_found -> false)
-        (List.rev free) in
+        (List.rev free) in	(* ºÇ¸å¤ÎÊý¤Ë»È¤ï¤ì¤ë¤ä¤Ä¤«¤é¸«¤Æ¤¯(reverse) *)
     Format.eprintf "spilling %s from %s@." y (M.find y regenv);
     Spill(y)
 
@@ -94,10 +95,11 @@ let find' x' regenv =
   | V(x) -> V(find x Type.Int regenv)
   | c -> c
 
+(* (ÌÜÅªreg, Type) -> (¸åÂ³¤ÎÌ¿ÎáÎóasm.t) -> (reg³äÅömap) -> (º£¤ÎÌ¿ÎáÎóasm.t)  ==>>  (regenv, asm.t) *)
 let rec g dest cont regenv = function (* Ì¿ÎáÎó¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_g) *)
   | Ans(exp) -> g'_and_restore dest cont regenv exp
   | Let((x, t) as xt, exp, e) ->
-      assert (not (M.mem x regenv));
+      assert (not (M.mem x regenv));	(* x¤Ï¤Þ¤À³ä¤êÅö¤Æ¤é¤ì¤Æ¤Ê¤¤¤Ï¤º *)
       let cont' = concat e dest cont in
       let (e1', regenv1) = g'_and_restore xt cont' regenv exp in
       (match alloc dest cont' regenv1 x t with
@@ -117,22 +119,23 @@ and g'_and_restore dest cont regenv exp = (* »ÈÍÑ¤µ¤ì¤ëÊÑ¿ô¤ò¥¹¥¿¥Ã¥¯¤«¤é¥ì¥¸¥¹¥
     ((* Format.eprintf "restoring %s@." x; *)
      g dest cont regenv (Let((x, t), Restore(x), Ans(exp))))
 and g' dest cont regenv = function (* ³ÆÌ¿Îá¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_gprime) *)
-  | Nop | Set _ | SetL _ | Comment _ | Restore _ as exp -> (Ans(exp), regenv)
+  | Nop | Set _ | Setf _ | SetL _ | Comment _ | Restore _ as exp -> (Ans(exp), regenv)
   | Mov(x) -> (Ans(Mov(find x Type.Int regenv)), regenv)
   | Neg(x) -> (Ans(Neg(find x Type.Int regenv)), regenv)
   | Add(x, y') -> (Ans(Add(find x Type.Int regenv, find' y' regenv)), regenv)
   | Sub(x, y') -> (Ans(Sub(find x Type.Int regenv, find' y' regenv)), regenv)
   | SLL(x, y') -> (Ans(SLL(find x Type.Int regenv, find' y' regenv)), regenv)
+  | SRA(x, y') -> (Ans(SRA(find x Type.Int regenv, find' y' regenv)), regenv)
   | Ld(x, y') -> (Ans(Ld(find x Type.Int regenv, find' y' regenv)), regenv)
   | St(x, y, z') -> (Ans(St(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
-  | FMovD(x) -> (Ans(FMovD(find x Type.Float regenv)), regenv)
-  | FNegD(x) -> (Ans(FNegD(find x Type.Float regenv)), regenv)
-  | FAddD(x, y) -> (Ans(FAddD(find x Type.Float regenv, find y Type.Float regenv)), regenv)
-  | FSubD(x, y) -> (Ans(FSubD(find x Type.Float regenv, find y Type.Float regenv)), regenv)
-  | FMulD(x, y) -> (Ans(FMulD(find x Type.Float regenv, find y Type.Float regenv)), regenv)
-  | FDivD(x, y) -> (Ans(FDivD(find x Type.Float regenv, find y Type.Float regenv)), regenv)
-  | LdDF(x, y') -> (Ans(LdDF(find x Type.Int regenv, find' y' regenv)), regenv)
-  | StDF(x, y, z') -> (Ans(StDF(find x Type.Float regenv, find y Type.Int regenv, find' z' regenv)), regenv)
+  | FMov(x) -> (Ans(FMov(find x Type.Float regenv)), regenv)
+  | FNeg(x) -> (Ans(FNeg(find x Type.Float regenv)), regenv)
+  | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FDiv(x, y) -> (Ans(FDiv(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | LdF(x, y') -> (Ans(LdF(find x Type.Int regenv, find' y' regenv)), regenv)
+  | StF(x, y, z') -> (Ans(StF(find x Type.Float regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | IfEq(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfEq(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
   | IfLE(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfLE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
   | IfGE(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfGE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
@@ -204,8 +207,8 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* ´Ø¿ô¤Î¥ì
   let (e', regenv') = g (a, t) (Ans(Mov(a))) regenv e in
   { name = Id.L(x); args = arg_regs; fargs = farg_regs; body = e'; ret = t }
 
-let f (Prog(data, fundefs, e)) = (* ¥×¥í¥°¥é¥àÁ´ÂÎ¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_f) *)
+let f (Prog(fundefs, e)) = (* ¥×¥í¥°¥é¥àÁ´ÂÎ¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_f) *)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs' = List.map h fundefs in
   let e', regenv' = g (Id.gentmp Type.Unit, Type.Unit) (Ans(Nop)) M.empty e in
-  Prog(data, fundefs', e')
+  Prog(fundefs', e')

@@ -1,14 +1,16 @@
 open Lexing
 
 type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
-  | Unit			(* constant *)
+  | Unit
   | Bool of bool
   | Int of int
   | Float of float
-  | Not of t			(* primitive op *)
+  | Not of t
   | Neg of t
   | Add of t * t
   | Sub of t * t
+  | SLL of t * t	(* 第二オペランドは即値のみ *)
+  | SRA of t * t	(* 同上 *)
   | FNeg of t
   | FAdd of t * t
   | FSub of t * t
@@ -34,10 +36,12 @@ type t' = (* positionを記憶 *)
   | Bool' of bool
   | Int' of int
   | Float' of float
-  | Not' of t' * position		(* primitive op *)
+  | Not' of t' * position
   | Neg' of t' * position
   | Add' of t' * t' * position
   | Sub' of t' * t' * position
+  | SLL' of t' * t' * position
+  | SRA' of t' * t' * position
   | FNeg' of t' * position
   | FAdd' of t' * t' * position
   | FSub' of t' * t' * position
@@ -46,7 +50,7 @@ type t' = (* positionを記憶 *)
   | Eq' of t' * t' * position
   | LE' of t' * t' * position
   | If' of t' * t' * t' * position
-  | Let' of (Id.t * Type.t) * t' * t' * position	(* let *)
+  | Let' of (Id.t * Type.t) * t' * t' * position
   | Var' of Id.t
   | LetRec' of fundef' * t' * position
   | App' of t' * t' list * position

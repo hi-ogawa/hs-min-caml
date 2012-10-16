@@ -9,7 +9,7 @@ let rec iter n e = (* ºÇÅ¬²½½èÍý¤ò¤¯¤ê¤«¤¨¤¹ (caml2html: main_iter) *)
 
 let lexbuf outchan l = (* ¥Ð¥Ã¥Õ¥¡¤ò¥³¥ó¥Ñ¥¤¥ë¤·¤Æ¥Á¥ã¥ó¥Í¥ë¤Ø½ÐÎÏ¤¹¤ë (caml2html: main_lexbuf) *)
   Id.counter := 0;
-  Typing.extenv := M.empty;
+  Typing_pos.extenv := M.empty;
   EmitMy.f outchan
     (RegAllocMy.f
        (SimmMy.f
@@ -25,12 +25,27 @@ let string s = lexbuf stdout (Lexing.from_string s) (* Ê¸»úÎó¤ò¥³¥ó¥Ñ¥¤¥ë¤·¤ÆÉ¸½
 
 let file f = (* ¥Õ¥¡¥¤¥ë¤ò¥³¥ó¥Ñ¥¤¥ë¤·¤Æ¥Õ¥¡¥¤¥ë¤Ë½ÐÎÏ¤¹¤ë (caml2html: main_file) *)
   let inchan = open_in (f ^ ".ml") in
+  let tmpchan = open_out (f ^ "__.ml") in
+  let libchan1 = open_in ("./test/lib/mylib_ml.ml") in
+  let libchan2 = open_in ("./test/lib/mylib_s.s") in	(* ¥³¥ó¥Ñ¥¤¥ë¤·¤¿¸å¤Ë¤¯¤Ã¤Ä¤±¤ë *)
   let outchan = open_out (f ^ ".s") in
-  try
-    lexbuf outchan (Lexing.from_channel inchan);
-    close_in inchan;
-    close_out outchan;
-  with e -> (close_in inchan; close_out outchan; raise e)
+  try while true do
+      output_string tmpchan ((input_line libchan1) ^ "\n")	(*¥½¡¼¥¹¤ÎÀèÆ¬¤Ë¤¯¤Ã¤Ä¤±¤ë(mylib_ml)*)
+  done with End_of_file ->
+    close_in libchan1;
+      try while true do
+	  output_string tmpchan ((input_line inchan) ^ "\n")
+      done with End_of_file ->
+	close_in inchan; close_out tmpchan;
+	let inchan' = open_in (f ^ "__.ml") in
+	lexbuf outchan (Lexing.from_channel inchan');	(* compile *)
+	close_in inchan';
+	try while true do
+	    output_string outchan ((input_line libchan2) ^ "\n")	(* asm¥½¡¼¥¹¤Î¸å¤í¤Ë¤¯¤Ã¤Ä¤±¤ë(mylib_s) *)
+        done with End_of_file ->
+	  close_in libchan2;
+	  close_out outchan
+
 
 let () = (* ¤³¤³¤«¤é¥³¥ó¥Ñ¥¤¥é¤Î¼Â¹Ô¤¬³«»Ï¤µ¤ì¤ë (caml2html: main_entry) *)
   let files = ref [] in

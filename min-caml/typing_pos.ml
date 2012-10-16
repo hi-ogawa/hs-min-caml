@@ -16,6 +16,7 @@ let get_pos = function
   | If' (_,_,_,pos) | Let' (_,_,_,pos) | LetRec' (_,_,pos)
   | App' (_,_,pos) | Tuple' (_,pos) | LetTuple' (_,_,_,pos) | Array' (_,_,pos)
   | Get' (_,_,pos) | Put' (_,_,_,pos)
+  | SLL' (_,_,pos) | SRA' (_,_,pos)
     -> pos
   
 
@@ -41,6 +42,8 @@ let rec deref_term = function
   | Neg'(e,_) -> Neg(deref_term e)
   | Add'(e1, e2, _) -> Add(deref_term e1, deref_term e2)
   | Sub'(e1, e2, _) -> Sub(deref_term e1, deref_term e2)
+  | SLL' (e1, e2, _) -> SLL(deref_term e1, deref_term e2)
+  | SRA' (e1, e2, _) -> SRA(deref_term e1, deref_term e2)
   | Eq'(e1, e2, _) -> Eq(deref_term e1, deref_term e2)
   | LE'(e1, e2, _) -> LE(deref_term e1, deref_term e2)
   | FNeg'(e, _) -> FNeg(deref_term e)
@@ -112,7 +115,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Neg'(e,_) ->
 	unify Type.Int (g env e);
 	Type.Int
-    | Add'(e1, e2, _) | Sub'(e1, e2, _) -> (* 足し算（と引き算）の型推論 (caml2html: typing_add) *)
+    | Add'(e1, e2, _) | Sub'(e1, e2, _) | SLL'(e1, e2, _) | SRA'(e1, e2, _)-> (* 足し算（と引き算）の型推論 (caml2html: typing_add) *)
 	unify Type.Int (g env e1);
 	unify Type.Int (g env e2);
 	Type.Int
@@ -147,7 +150,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
 	g env e2
     | App'(e, es, _) -> (* 関数適用の型推論 (caml2html: typing_app) *)
-	let t = Type.gentyp () in
+        let t = Type.gentyp () in
 	unify (g env e) (Type.Fun(List.map (g env) es, t));
 	t
     | Tuple'(es, _) -> Type.Tuple(List.map (g env) es)
@@ -171,13 +174,6 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 
 let f e =
   extenv := M.empty;
-(*
-  (match deref_typ (g M.empty e) with
-  | Type.Unit -> ()
-  | _ -> Format.eprintf "warning: final result does not have type unit@.");
-*)
-  (* (try unify Type.Unit (g M.empty e) *)
-  (* with Unify _ -> failwith "top level does not have type unit"); *)
   ignore (g M.empty e);
   extenv := M.map deref_typ !extenv;
   deref_term e

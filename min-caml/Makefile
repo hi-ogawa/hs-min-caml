@@ -19,32 +19,28 @@ clean:: nobackup
 
 # ↓もし実装を改造したら、それに合わせて変える
 SOURCES = float.c type.ml id.ml m.ml s.ml \
-syntax.ml parser.mly parser_pos.mly lexer.mll lexer_pos.mll typing.mli typing.ml typing_pos.ml \
-kNormal.mli kNormal.ml \
+syntax.ml parser_pos.mly lexer_pos.mll typing_pos.ml \
+kNormal.ml \
 alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
 inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
-closure.mli closure.ml asm.mli asm.ml asmMy.ml virtual.mli virtual.ml virtualMy.ml \
-simm.mli simm.ml simmMy.ml regAlloc.mli regAlloc.ml regAllocMy.ml emit.mli emit.ml emitMy.ml \
- mainMy.ml debug_util.ml debug_knormal.ml debug_syntax.ml debug_closure.ml debug_main.ml
+closure.ml asmMy.ml virtualMy.ml \
+simmMy.ml regAllocMy.ml emitMy.ml mainMy.ml
 
+# SOURCESMY =float.c type.ml id.ml m.ml s.ml \
+# syntax.ml parser_pos.mly lexer_pos.mll typing_pos.ml \
+# kNormal.ml \
+# alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
+# inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
+# closure.ml asmMy.ml virtualMy.ml \
+# simmMy.ml regAllocMy.ml emitMy.ml mainMy.ml debug_main.ml
 
-
-# デバッグ用につくる実行ファイル(mincaml_debug)のためのソース
-OBJECTS = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo  parser_pos.cmo \
- lexer.cmo lexer_pos.cmo \
- typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
- inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo asmMy.cmo virtual.cmo \
- virtualMy.cmo simm.cmo simmMy.cmo regAlloc.cmo regAllocMy.cmo \
- debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo \
- debug_main.cmo 
 
 # 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
-FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser.cmo parser_pos.cmo\
- lexer.cmo lexer_pos.cmo \
- typing.cmo  typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
- inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asm.cmo asmMy.cmo virtual.cmo \
- virtualMy.cmo simm.cmo simmMy.cmo regAlloc.cmo regAllocMy.cmo \
- debug_util.cmo debug_knormal.cmo debug_syntax.cmo debug_closure.cmo
+FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parser_pos.cmo\
+ lexer_pos.cmo \
+ typing_pos.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
+ inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asmMy.cmo \
+ virtualMy.cmo simmMy.cmo regAllocMy.cmo
 
 # ↓テストプログラムが増えたら、これも増やす
 TESTS = print sum-tail gcd sum fib ack even-odd \
@@ -56,7 +52,7 @@ inprod inprod-rec inprod-loop matmul matmul-flat
 do_test: $(TESTS:%=test/%.cmp)
 
 .PRECIOUS: test/%.s test/% test/%.res test/%.ans test/%.cmp
-TRASH = $(TESTS:%=test/%.s) $(TESTS:%=test/%) $(TESTS:%=test/%.res) $(TESTS:%=test/%.ans) $(TESTS:%=test/%.cmp)
+#TRASH = $(TESTS:%=test/%.s) $(TESTS:%=test/%) $(TESTS:%=test/%.res) $(TESTS:%=test/%.ans) $(TESTS:%=test/%.cmp)
 
 test/%.s: $(RESULT) test/%.ml
 	./$(RESULT) test/$*
@@ -88,9 +84,10 @@ release: min-caml.html
 	rm -fr tmp ; mkdir tmp ; cd tmp ; cvs -d:ext:sumii@min-caml.cvs.sf.net://cvsroot/min-caml export -Dtomorrow min-caml ; tar cvzf ../min-caml.tar.gz min-caml ; cd .. ; rm -fr tmp
 	cp Makefile stub.c SPARC/libmincaml.S min-caml.html min-caml.tar.gz ../htdocs/
 
-for_debug:
-	ocamlc $(OBJECTS) -o mincaml_debug
 for_lib:
 	ocamlc -a $(FORLIB) -o mincaml_lib.cma
+
+test_clean:
+	rm -rf ./test/*.s ./test/*.b ./test/*__.ml
 
 include OCamlMakefile

@@ -35,24 +35,32 @@
 汎用レジスタ(regs)	%i2 - %i7, %l0 - %l7, %o0 - %o5		%r2 - %r27 (適当)
 浮動小数点(fregs)	%f0,%f2,.., %f30 (64bitが16個)		%f0 - %f31
 stack pointer(reg_sp)	%i0					%r29
-heap pointer(reg_hp)	%i1					(%r28)
+heap pointer(reg_hp)	%i1					%r30
 return addres(reg_ra)	%o7					%r31
 
 関数の引数		%i2 - 全部, %f0 - 全部			%r2 - 全部, %f0 - 全部
 関数の戻り値		%i2, %f0				%r2, %f0
-closure pointer(reg_cl)	%o5					%r20
-swap reg		%o4					%r19
+closure pointer(reg_cl)	%o5					%r28
+swap reg		%o4					%r27
 
-補足								r0は常にゼロ, r1はアセンブリ
-			caller-saveやら謎(使うものは退避?)	Hi, Lo レジスタ使う?(整数乗算、除算の結果)
+補足								r0は常にゼロ, r1はアセンブリの遊び
 								(シフトで代用できる疑惑)
 								r20: closure
 
-			関数呼び出しに伴いスタックはアドレスの大きい方に伸ばしていく								
+<メモ>
+関数呼び出しに伴いスタックはアドレスの大きい方に伸ばしていく
+フロートは単精度
+全部caller-save
 
 
 (13) subi命令がないので、即値の引き算はaddiuで代用。
 SLL のレジスタオペランドどうする	<= array中の計算のための即値オフセットしかないから大丈夫
 SetLどうする (FLoat table, MakeCls, ExtArrayで必要) <= load address 擬似命令で対応
-Ld, LdDF, St, StDF のレジスタオペランドどうする(配列中の計算で必要となる)	<= 事前に足せばOK
+Ld, LdDF, St, StDF のレジスタオペランドどうする(配列中の計算で必要となる)	<= 事前にオフセットを足せばOK
 関数呼び出し後の遅延スロットは外す <= はずした
+
+即値に負が来るのはあり得る??(負ならばNegがかかった変数になってそう)
+即値に負が来れるように最適化する(あとで)
+
+定数たたみ込みで32bit整数を超えることがありそう??(一応チェックする、あとで)
+
