@@ -13,6 +13,7 @@ let rec synToStr exp =
     | Not _ -> "<NOT>"| Neg _ -> "<Neg>" | FNeg _ -> "<FNeg>"
     | Add _ -> "<ADD>" | Sub _ -> "<SUB>" | FAdd _ -> "<FADD>"
     | FSub _ -> "<FSub>" | FMul _ -> "<FMUL>" | FDiv _ -> "<FDIV>"
+    | SRA _ -> "<SRA>" | SLL _ -> "<SLL>"
     | Eq _ -> "<EQ>" | LE _ -> "<LE>" | Array _ -> "<ARRAY>" | Get _ -> "<GET>"
     | If _ -> "<IF>" | Put _ -> "<PUT>"
     | Let ((x,t),_,_) -> sprintf "<LET>: [%s (%s)]" x (tyToStr t)
@@ -24,7 +25,7 @@ let rec synToStr exp =
 (* Syntax.t -> int -> unit *)
 let rec p_syn exp d =
   p_d d "";
-  printf "%s\n" (synToStr exp);	(* 共通化できない部分はなるべくここで済ませる *)
+  eprintf "%s\n" (synToStr exp);	(* 共通化できない部分はなるべくここで済ませる *)
   (match exp with
     | Unit | Bool _ | Int _ | Float _ | Var _
       -> ()
@@ -32,6 +33,7 @@ let rec p_syn exp d =
       -> p_syn e (d+1)
     | Add(e1, e2) | Sub(e1, e2)	| FAdd(e1, e2) | FSub(e1, e2) | FMul(e1, e2)
     | FDiv(e1, e2) | Eq(e1, e2) | LE(e1, e2) | Array(e1, e2) | Get(e1, e2)
+    | SRA(e1, e2) | SLL(e1,e2)
       -> p_syn e1 (d+1) ; p_syn e2 (d+1)
     | If(e1, e2, e3) | Put(e1, e2, e3)
       -> p_d (d+1) "--e1--\n"; p_syn e1 (d+1); p_d (d+1) "--e2--\n"; p_syn e2 (d+1); p_d (d+1) "--e3--\n"; p_syn e3 (d+1)

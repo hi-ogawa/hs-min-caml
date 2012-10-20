@@ -20,11 +20,12 @@ clean:: nobackup
 # ↓もし実装を改造したら、それに合わせて変える
 SOURCES = float.c type.ml id.ml m.ml s.ml \
 syntax.ml parserMy.mly lexerMy.mll typingMy.ml \
-kNormal.ml \
-alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
-inline.mli inline.ml constFold.mli constFold.ml elim.mli elim.ml \
+kNormal.ml alpha.ml beta.ml assoc.ml \
+inline.ml constFold.ml elim.ml \
 closure.ml asmMy.ml virtualMy.ml \
-simmMy.ml regAllocMy.ml emitMy.ml mainMy.ml
+simmMy.ml regAllocMy.ml emitMy.ml \
+debug_util.ml debug_syntax.ml debug_knormal.ml debug_closure.ml \
+mainMy.ml
 
 # 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
 FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parserMy.cmo\
@@ -55,6 +56,12 @@ release: min-caml.html
 
 for_lib:
 	ocamlc -a $(FORLIB) -o mincaml_lib.cma
+
+min-rt:
+	../simulator/sim2 ./test/min-rt/min-rt-new.s < ./test/min-rt/sld/contest.sld | tee ./test/min-rt/sld/contest.ppm
+
+pika:
+	../simulator/sim2 ./test/min-rt/min-rt-new.s < ./test/min-rt/sld/pika.sld | tee ./test/min-rt/sld/pika.ppm
 
 test_clean:
 	rm -rf ./test/*.s ./test/*.b ./test/*__.ml

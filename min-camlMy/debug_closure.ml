@@ -13,6 +13,7 @@ let cloToStr exp =
     | Add _ -> "<ADD>" | Sub _ -> "<SUB>" | FAdd _ -> "<FADD>"
     | FSub _ -> "<FSub>" | FMul _ -> "<FMUL>" | FDiv _ -> "<FDIV>"
     | IfEq _ -> "<IFEQ>" | IfLE _ -> "<IFLE>" 
+    | SRA _ -> "<SRA>" | SLL _ -> "<SLL>"
     | Get _ -> "<GET>" | Put _ -> "<PUT>"
     | Let ((x,t),_,_) -> sprintf "<LET>: [%s (%s)]" x (tyToStr t)
     | Tuple _ -> "<TUPLE>" 
@@ -28,14 +29,14 @@ let cloToStr exp =
 (* Closure.t -> int -> unit *)
 let rec p_clo exp d = 
   p_d d "";
-  printf "%s\n" (cloToStr exp); (* 共通化できない部分はなるべくここで済ませる *)
+  eprintf "%s\n" (cloToStr exp); (* 共通化できない部分はなるべくここで済ませる *)
   (match exp with
   | Unit | Int _ | Float _ | Var _
     -> ()
   | Neg x1 | FNeg x1
     -> p_d (d+1) (sprintf "--var1: %s\n" x1)
-  | Add (x1,x2) | Sub (x1,x2) | FAdd (x1,x2) | FSub (x1,x2) | FMul (x1,x2)
-  | FDiv (x1,x2) | Get (x1,x2)
+  | Add (x1,x2) | Sub (x1,x2) | FAdd (x1,x2) | FSub (x1,x2) | FMul (x1,x2) 
+  | FDiv (x1,x2) | Get (x1,x2) | SRA(x1, x2) | SLL(x1, x2)
     -> p_d (d+1) (sprintf "--var1: %s\n" x1); p_d (d+1) (sprintf "--var2: %s\n" x1)
   | Put (x1,x2,x3)
     -> p_d (d+1) (sprintf "--var1: %s\n" x1); p_d (d+1) (sprintf "--var2: %s\n" x2); p_d (d+1) (sprintf "--var3: %s\n" x3)
@@ -57,6 +58,6 @@ let rec p_clo exp d =
 (* Closure.fundef list -> unit *)
 let rec p_topl fundefs =
   let subf {name = (l, t); args = xts; formal_fv = yts; body = e1}
-      = printf "name = (%s, ,%s); args = %s; freevar = %s\n" (labelOff l) (tyToStr t) (argsToStr xts) (argsToStr yts); p_clo e1 0
+      = eprintf "name = (%s, ,%s); args = %s; freevar = %s\n" (labelOff l) (tyToStr t) (argsToStr xts) (argsToStr yts); p_clo e1 0
   in
   List.iter subf fundefs

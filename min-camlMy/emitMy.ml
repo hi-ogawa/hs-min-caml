@@ -54,10 +54,10 @@ let rec g oc = function (* 命令列のアセンブリ生成 (caml2html: emit_g) *)
 and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> ()
-  | NonTail(x), Set(i) when -32768 <= i && i <= 32767 -> Printf.fprintf oc "\tori\t%s, $r0, %d\n" x i	(* 16bitの即値fieldで収まる時(ori) *)
+  | NonTail(x), Set(i) when -32768 <= i && i <= 32767 -> Printf.fprintf oc "\taddi\t%s, $r0, %d\n" x i	(* 16bitの即値fieldで収まる時(addi) *)
   | NonTail(x), Set(i) 
-    -> Printf.fprintf oc "\tlui\t%s, %d\n" x ((i lsr 16) mod (1 lsl 16));	(* 32bit整数のレジスタへのロード *)
-       Printf.fprintf oc "\tori\t%s, %s, %d\n" x x (i mod (1 lsl 16))
+    -> Printf.fprintf oc "\tlui\t%s, %d\n" x (((i land 0xffffffff) lsr 16) mod (1 lsl 16));	(* 32bit整数のレジスタへのロード *)
+       Printf.fprintf oc "\tori\t%s, %s, %d\n" x x ((i land 0xffffffff) mod (1 lsl 16))
   | NonTail(x), Setf(d) 
     -> Printf.fprintf oc "\tlfh\t%s, %ld\n" x (gethi d);
        Printf.fprintf oc "\tlfl\t%s, %ld\n" x (getlo d)
@@ -79,11 +79,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(_), St(x, y, C(i)) -> Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x i y
   | NonTail(x), FMov(y) when x = y -> ()
   | NonTail(x), FMov(y) ->
-      Printf.fprintf oc "\tfmove\t%s, %s\n" y x;	(* 移動命令欲しい *)
-      (* Printf.fprintf oc "\tfmovs\t%s, %s\n" (co_freg y) (co_freg x)	(\* 64bitを移動 *\) *)
+      Printf.fprintf oc "\tfmove\t%s, %s\n" x y;	(* 移動命令欲しい *)
   | NonTail(x), FNeg(y) ->
-      Printf.fprintf oc "\tfneg\t%s, %s\n" y x; (* 符号反転も欲しい *)
-      (* if x <> y then Printf.fprintf oc "\tfmovs\t%s, %s\n" (co_freg y) (co_freg x) *)
+      Printf.fprintf oc "\tfneg\t%s, %s\n" x y; (* 符号反転も欲しい *)
   | NonTail(x), FAdd(y, z) -> Printf.fprintf oc "\tadd.s\t%s, %s, %s\n" x y z
   | NonTail(x), FSub(y, z) -> Printf.fprintf oc "\tsub.s\t%s, %s, %s\n" x y z
   | NonTail(x), FMul(y, z) -> Printf.fprintf oc "\tmul.s\t%s, %s, %s\n" x y z
@@ -270,7 +268,6 @@ and g'_args oc x_reg_cl ys zs =
   List.iter
     (fun (z, fr) ->
       Printf.fprintf oc "\tfmove\t%s, %s\t! g'_args\n" fr z)
-      (* Printf.fprintf oc "\tfmove\t%s, %s\n" (co_freg z) (co_freg fr)) *)
     (shuffle reg_fsw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
@@ -284,7 +281,7 @@ let f oc (Prog(fundefs, e)) =
   Printf.fprintf oc "\tj\tmin_caml_start\n";		(* mainにジャンプ *)
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "min_caml_start:\n";
-  Printf.fprintf oc "\tlui\t%s, %d\t! init reg_sp\n" reg_sp 0x0040;		(* reg_spの初期化 0x00400000 (22bitで表現できる領域を使う)*)
+  Printf.fprintf oc "\tlui\t%s, %d\t! init reg_sp\n" reg_sp 0x0400;		(* reg_spの初期化 0x00400000 (22bitで表現できる領域を使う)*)
   Printf.fprintf oc "\tori\t%s, %s, %d\t! init reg_sp\n" reg_sp reg_sp 0x0000;	(* reg_spの初期化 0x00400000 *)
   Printf.fprintf oc "\tori\t%s, %s, %d\t! init reg_hp \n" reg_hp "$r0" 0;	(* reg_hpの初期化 0x00000000 *)
   stackset := S.empty;

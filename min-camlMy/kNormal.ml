@@ -188,4 +188,5 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 	    (fun y -> insert_let (g env e3)
 		(fun z -> Put(x, y, z), Type.Unit)))
 
-let f e = fst (g M.empty e)
+let f e =
+  fst (g M.empty e)

@@ -7,7 +7,8 @@ int ram[DATA_RAM_SIZE/4];	// data teritory	(word幅のみでアクセス)
 int fpcond;		// float condition register的な何か
 int pc = 0;		// program counter
 
-// ULLI inst_num = 0;
+ULLI inst_num = 0;
+int min_sp = 0x04000000;
 
 // set<int> b_point;		// break point
 // set<int> mon_ireg;
@@ -15,9 +16,13 @@ int pc = 0;		// program counter
 // set<int> mon_ram;
 
 bool halt = false;
-bool print = true;
+bool print = false;
 
 int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
+
+  for(int i=0; i < DATA_RAM_SIZE/4; i++){
+    ram[i] = 0;
+  }
 
   ireg[0] = 0;	// zero register
 
@@ -28,12 +33,26 @@ int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
   //   cerr <<", sham:"<< insts[i].sh <<", imme:"<< insts[i].im << endl;
   // }
 
+  ireg[29] = 0x04000000;
+
   cont = true;
 
   if(cont){
     while(1){
       if(halt) break;
+      // if(print){
+      // 	showRegs();
+      // }
+      // if(inst_num % 10000000 == 0)
+      // 	cerr << "print debug: " << ireg[29] << ", min_sp" << min_sp << endl;
       execInst(insts[pc]);
+      if(ireg[29] <= min_sp) min_sp = ireg[29];
+      // inst_num ++;
+    }
+    cerr << "r29(stack-min): " << min_sp << ", " << "r30(heap): " << ireg[30] << endl;
+    cerr << "inst_num: " << inst_num << endl;
+    for(int i=0; i < DATA_RAM_SIZE/4; i+=10000){
+      cerr << "ram[" << i << "]: " << ram[i] << ", ";
     }
     return 0;
   }
@@ -79,6 +98,7 @@ int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
   //   }
 
   // }
+
   return 0;
 }
 
@@ -128,201 +148,223 @@ int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
 //   cerr << endl;
 // }
 
+void showRegs(void){
+  cerr << "pc: " << pc << endl;
+  cerr << "monitering register" << endl;
+  for(int i=0; i < 32; i++){
+    cerr << "reg[" << i << "]: " << ireg[i] << ", ";
+  }
+  cerr << endl;
+  for(int i=0; i < 32; i++){
+    cerr << "freg[" << i << "]: " << freg[i] << ", ";
+  }
+  cerr << endl;
+}
+
 void execInst(inst nowi){
-
+  if(print){
+    cerr << "inst_num: " << inst_num << endl;
+    cerr << "pc: " << (pc-1) << endl;
+    cerr << nowi.line << endl;
+  }
   pc += 1;
-  //  inst_num += 1;
 
-  // if(print){
-  //   cerr << "inst_num: " << inst_num << endl;
-  //   cerr << "pc: " << (pc-1);
-  //   cerr << nowi.line;
-  //   cerr <<"name:"<< nowi.name <<", rs:"<< nowi.rs <<", rt:"<< nowi.rt <<",rd:"<< nowi.rd ;
-  //   cerr <<", sham:"<< nowi.sh <<", imme:"<< nowi.im << endl;
-  // }
-
-  if(nowi.name == "addu"){
-    //    mon_ireg.insert(nowi.rd);
+  if(nowi.op == 0x4 && nowi.rs == 0 && nowi.rt == 0 && nowi.im==-1){//nowi.name == "halt" 一番最初に持ってくる(beqとopcodeかぶってるから)
+    //    cerr << "halt" << endl;
+    halt = true;
+  }
+  else if(nowi.op == 0x0 && nowi.fu == 0x21){	//nowi.name == "addu"
+//    cerr << "addu" << endl;
     ireg[nowi.rd] = ireg[nowi.rs] + ireg[nowi.rt];
   }
-  else if(nowi.name == "subu"){
-    //    mon_ireg.insert(nowi.rd);    
+  else if(nowi.op == 0x0 && nowi.fu == 0x23){	//nowi.name == "subu"
+  //  cerr << "subu" << endl;
     ireg[nowi.rd] = ireg[nowi.rs] - ireg[nowi.rt];
   }
-  else if(nowi.name == "slt"){
-    //    mon_ireg.insert(nowi.rd);
+  else if(nowi.op == 0x0 && nowi.fu == 0x2a){//nowi.name == "slt"
+  //  cerr << "slt" << endl;
     if(ireg[nowi.rs] < ireg[nowi.rt]) ireg[nowi.rd] = 1;
     else ireg[nowi.rd] = 0;
   }
 
-  else if(nowi.name == "lw"){
-    int mem_addr = ireg[nowi.rs] + nowi.im;
-    //    if(mon_ram.find(mem_addr) != mon_ram.end()){
-    if(0 <= mem_addr && mem_addr <= 0x3fffff){
-      //      mon_ireg.insert(nowi.rt);	
-      ireg[nowi.rt] = ram[mem_addr/4];
+  else if(nowi.op == 0x23){//nowi.name == "lw"
+ //   cerr << "lw" << endl;
+    int addr = ireg[nowi.rs] + nowi.im;
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ireg[nowi.rt] = ram[addr/4];
     }
-    else
-      cerr << "ERROR: Touching memory out of bounds!!" << endl;
-    //    }
-    //    else{ cerr << "error: not initiated memory!" << endl;}
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << nowi.line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
   }
-  else if(nowi.name == "sw"){
-    int mem_addr = ireg[nowi.rs] + nowi.im;
-    if(0 <= mem_addr && mem_addr <= 0x3fffff){
-      //      mon_ram.insert(mem_addr);
-      ram[mem_addr/4] = ireg[nowi.rt];
+  else if(nowi.op == 0x2b){	//nowi.name == "sw"
+  //  cerr << "sw" << endl;
+    int addr = ireg[nowi.rs] + nowi.im;
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ram[addr/4] = ireg[nowi.rt];
     }
-    else
-      cerr << "ERROR: Touching memory out of bounds!!" << endl;
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << nowi.line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
   }
 
-  else if(nowi.name == "beq"){
+  else if(nowi.op == 0x04){//nowi.name == "beq"
+  //  cerr << "beq" << endl;
     if(ireg[nowi.rt] == ireg[nowi.rs]) pc += nowi.im;
   }
-  else if(nowi.name == "bne"){
+  else if(nowi.op == 0x05){//nowi.name == "bne"
+  //  cerr << "bne" << endl;
     if(ireg[nowi.rt] != ireg[nowi.rs]) pc += nowi.im;
   }
 
-  else if(nowi.name == "addi"){
-    //    mon_ireg.insert(nowi.rt);	
+  else if(nowi.op == 0x8){//nowi.name == "addi"
+  //  cerr << "addi" << endl;
     ireg[nowi.rt] = ireg[nowi.rs] + nowi.im;
   }
-  else if(nowi.name == "ori"){
-    //    mon_ireg.insert(nowi.rt);	
+  else if(nowi.op == 0x0d){//nowi.name == "ori"
+  //  cerr << "ori" << endl;
     ireg[nowi.rt] = ireg[nowi.rs] | nowi.im;
   }
-  else if(nowi.name == "sll"){
-    //    mon_ireg.insert(nowi.rd);	
+  else if(nowi.op == 0x00 && nowi.fu == 0x00){	//nowi.name == "sll"
+  //  cerr << "sll" << endl;
     ireg[nowi.rd] = ireg[nowi.rs] << nowi.sh;
   }
-  else if(nowi.name == "sra"){
-    //    mon_ireg.insert(nowi.rd);	
+  else if(nowi.op == 0x00 && nowi.fu == 0x03){	//nowi.name == "sra"
+  //  cerr << "sra" << endl;
     ireg[nowi.rd] = ireg[nowi.rs] >> nowi.sh;
   }
 
-  else if(nowi.name == "lui"){
-    //    mon_ireg.insert(nowi.rt);	
+  else if(nowi.op == 0x0f){	//nowi.name == "lui"
+  //  cerr << "lui" << endl;
     ireg[nowi.rt] = (nowi.im * 0x10000) & 0xFFFF0000;
   }
 
-  else if(nowi.name == "jr"){
+  else if(nowi.op == 0x00 && nowi.fu == 0x08){//nowi.name == "jr"
+  //  cerr << "jr" << endl;
     pc = ireg[nowi.rs];
   }
-  else if(nowi.name == "input"){
-    //    mon_ireg.insert(nowi.rs);	
-    //    if(print)
-    //      cerr << "INPUT PLEASE > ";
+  else if(nowi.op == 0x18 && nowi.fu == 0x00){//nowi.name == "input"
+  //  cerr << "input" << endl;
     char c = getchar();
     ireg[nowi.rs] = (int)c;
   }
-  else if(nowi.name == "output"){
-    //    if(print)
-    //      cerr << "OUTPUT > ";
+  else if(nowi.op == 0x18 && nowi.fu == 0x01){//nowi.name == "output"
+  //  cerr << "output" << endl;
     cout << (char)(ireg[nowi.rs] & 0x000000FF);
   }
 
-  else if(nowi.name == "j"){
+  else if(nowi.op == 0x02){	//nowi.name == "j"
+  //  cerr << "j" << endl;
     pc = nowi.im;
   }
-  else if(nowi.name == "jal"){
-    //    mon_ireg.insert(31);	    
+  else if(nowi.op == 0x03){	//nowi.name == "jal"
+  //  cerr << "jal" << endl;
     ireg[31] = pc;
     pc = nowi.im;
   }  
 
-  else if(nowi.name == "halt"){
-    halt = true;
-  }
-
   // float関係
-  else if(nowi.name == "add.s"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x0){//nowi.name == "add.s"
+  //  cerr << "add.s" << endl;
     freg[nowi.rd] = freg[nowi.rs] + freg[nowi.rt];
   }
-  else if(nowi.name == "sub.s"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x1){//nowi.name == "sub.s"
+  //  cerr << "sub.s" << endl;
     freg[nowi.rd] = freg[nowi.rs] - freg[nowi.rt];
   }
-  else if(nowi.name == "mul.s"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x2){//nowi.name == "mul.s"
+  //  cerr << "mul.s" << endl;
     freg[nowi.rd] = freg[nowi.rs] * freg[nowi.rt];
   }
-  else if(nowi.name == "div.s"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3){//nowi.name == "div.s"
+  //  cerr << "div.s" << endl;
     freg[nowi.rd] = freg[nowi.rs] / freg[nowi.rt];
   }
-  else if(nowi.name == "fmove"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x4){//nowi.name == "fmove"
+  //  cerr << "fmove" << endl;
     freg[nowi.rd] = freg[nowi.rs];
   }
-  else if(nowi.name == "fneg"){
-    //    mon_freg.insert(nowi.rd);
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x5){//nowi.name == "fneg"
+  //  cerr << "fneg" << endl;
     freg[nowi.rd] = - freg[nowi.rs];
   }
 
-  else if(nowi.name == "c.eq.s"){
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x32){//nowi.name== "c.eq.s"
+  //  cerr << "c.eq.s" << endl;
     if(freg[nowi.rs] == freg[nowi.rt])
       fpcond = 1;
     else
       fpcond = 0;
   }
-  else if(nowi.name == "c.le.s"){
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3e){//nowi.name== "c.le.s"
+  //  cerr << "c.le.s" << endl;
     if(freg[nowi.rs] <= freg[nowi.rt])
       fpcond = 1;
     else
       fpcond = 0;
   }
 
-  else if(nowi.name == "lfl"){	// 上位16bitは保存する
-    //    mon_freg.insert(nowi.rt);
+  else if(nowi.op == 0x30){//nowi.name == "lfl"){	// 上位16bitは保存する
+  //  cerr << "lfl" << endl;
     conv c1, c2;
     c1.f = freg[nowi.rt];
     c2.i = (c1.i & 0xffff0000) | (nowi.im & 0xffff);
     freg[nowi.rt] = c2.f;
   }
-  else if(nowi.name == "lfh"){
-    //    mon_freg.insert(nowi.rt);
+  else if(nowi.op == 0x32){//nowi.name == "lfh"
+  //  cerr << "lfh" << endl;
     conv c1;
     c1.i = (nowi.im << 16);
     freg[nowi.rt] = c1.f;
   }
 
-  else if(nowi.name == "lwcl"){
+  else if(nowi.op == 0x31){//nowi.name == "lwcl"
+  //  cerr << "lwcl" << endl;
     int addr = ireg[nowi.rs] + nowi.im;
-    //    if(mon_ram.find(addr) != mon_ram.end()){
     if(0 <= addr && addr <= DATA_RAM_SIZE){
-	//	mon_freg.insert(nowi.rt);
       conv c1;
       c1.i = ram[addr/4];
       freg[nowi.rt] = c1.f;
     }else{
-      cerr << "error: touching memory out of bounds" << endl;
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << nowi.line << endl;
+      showRegs();
     }
-      //    }else{
-      //      cerr << "error: not initiated memory" << endl;
-      //    }
   }
-  else if(nowi.name == "swcl"){
+  else if(nowi.op == 0x39){//nowi.name == "swcl"
+  //  cerr << "swcl" << endl;
     int addr = ireg[nowi.rs] + nowi.im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
-      //      mon_ram.insert(addr);
       conv c1;
       c1.f = freg[nowi.rt];
       ram[addr/4] = c1.i;
     }else{
-      cerr << "error: touching memory out of bounds" << endl;
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << nowi.line << endl;
+      showRegs();
     }
   }
-  else if(nowi.name == "bclt"){
+  else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x1){//nowi.name == "bclt"
+  //  cerr << "bclt" << endl;
     if(fpcond == 1)
       pc += nowi.im;
   }
-  else if(nowi.name == "bclf"){
+  else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x0){//nowi.name == "bclf"
+  //  cerr << "bclf" << endl;
     if(fpcond == 0)
       pc += nowi.im;
   }
+
   else{
+  //  cerr << "not found" << endl;
     cerr << "error: not defined instructions" << endl;
   }
   

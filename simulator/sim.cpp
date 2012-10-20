@@ -63,7 +63,7 @@ int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
       execInst(insts[pc]);
     }
     cerr<<endl<<endl;
-    cerr << inst_num << endl;
+    cerr << "inst_num: " << inst_num << endl;
     showRegs(); showMems();
     cerr<<endl<<endl;
 

@@ -16,10 +16,13 @@ let rec argsToStr args =
 
 (* int -> string -> unit *)
 let rec p_d depth str =
-  for l = 1 to depth do print_string "      "; done;
-  print_string str
+  for l = 1 to depth do output_string stderr "      "; done;
+  output_string stderr str
 
 (* Id.l -> string(Id.t)*)
 let labelOff fl =
   match fl with
   | Id.L f -> f
+
+let showPos {Lexing.pos_fname = f; Lexing.pos_lnum = l; Lexing.pos_bol = b; Lexing.pos_cnum = c} =
+  (l, c-b, c)

@@ -102,7 +102,7 @@ void transeInstructions(void){
   cerr << "ended: label resolution" << endl;
 
 
-  // //debug print
+  //debug print
   // cerr << "debug print" << endl;
   // map<string, int>::iterator it = labelNames.begin();
   // while(it != labelNames.end()){
@@ -449,6 +449,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "lwcl"){
     if(sscanf(buffer, formFrIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("lwcl");
+      i1.op = 0x31;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -457,6 +458,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "swcl"){
     if(sscanf(buffer, formFrIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("swcl");
+      i1.op = 0x39;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -466,6 +468,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "bclt"){
     if(sscanf(buffer, formL, dummy, label) == 2){
       i1.ty = FI_TYPE; i1.name = instName; i1.label = string(label);
+      i1.op = 0x11; i1.fmt = 0x8; i1.rt = 0x1;		// functじゃなくてftで指定
       instVec.push_back(make_pair(i1, true));
       return instVec;
     }
@@ -474,6 +477,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "bclf"){
     if(sscanf(buffer, formL, dummy, label) == 2){
       i1.ty = FI_TYPE; i1.name = instName; i1.label = string(label);
+      i1.op = 0x11; i1.fmt = 0x8; i1.rt = 0x0;		// functじゃなくてftで指定
       instVec.push_back(make_pair(i1, true));
       return instVec;
     }
@@ -483,6 +487,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "add.s"){
     if(sscanf(buffer, formFrFrFr, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x0;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -491,6 +496,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "sub.s"){
     if(sscanf(buffer, formFrFrFr, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x1;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -499,6 +505,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "mul.s"){
     if(sscanf(buffer, formFrFrFr, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x2;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -507,6 +514,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "div.s"){
     if(sscanf(buffer, formFrFrFr, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x3;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -516,6 +524,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "fmove"){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x4;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -524,6 +533,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "fneg"){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x5;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -532,6 +542,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "c.eq.s"){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rs), &(i1.rt)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x32;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -540,6 +551,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "c.le.s"){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rs), &(i1.rt)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x3e;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -549,6 +561,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "lfl"){
     if(sscanf(buffer, formFrI, dummy, &(i1.rt), &(i1.im)) == 3){
       i1.ty = FI_TYPE; i1.name = instName;
+      i1.op = 0x30;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
@@ -557,6 +570,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "lfh"){
     if(sscanf(buffer, formFrI, dummy, &(i1.rt), &(i1.im)) == 3){
       i1.ty = FI_TYPE; i1.name = instName;
+      i1.op = 0x32;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }

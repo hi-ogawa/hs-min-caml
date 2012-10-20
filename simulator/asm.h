@@ -10,7 +10,7 @@
 #define MAX_LINE_SIZE 512
 #define INTREG_NUM 32
 #define FREG_NUM 32
-#define DATA_RAM_SIZE 0x00400000
+#define DATA_RAM_SIZE 0x04000000
 #define UI unsigned int
 #define ULLI unsigned long long int
 
