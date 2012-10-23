@@ -19,17 +19,16 @@ let rec fneg a = -. a in
 let rec fhalf a = a *. 0.5 in
 let rec fsqr a = a *. a in
 
-let rec sqrt x =	(* とりあえずソフトウエア実装 *)
-  let eps = 0.000001 in
-  let rec next y = y -. ((y *. y -. x) /. (2.0 *. y)) in
-  let rec sub_sqrt nx x m=
-    if m >= 0
-    then let nnx = next nx in
-	 sub_sqrt nnx nx (m-1)
-    else nx
-  in
-  sub_sqrt (next 1.0) 1.0 15
-in
+(* let rec sqrt x =	(\* とりあえずソフトウエア実装 *\) *)
+(*   let rec next y = y -. ((y *. y -. x) /. (2.0 *. y)) in *)
+(*   let rec sub_sqrt nx x m= *)
+(*     if m >= 0 *)
+(*     then let nnx = next nx in *)
+(* 	 sub_sqrt nnx nx (m-1) *)
+(*     else nx *)
+(*   in *)
+(*   sub_sqrt (next 1.0) 1.0 10 *)
+(* in *)
 
 (* floor, int_of_float, float_of_int はlib_asm.sで定義 *)
 

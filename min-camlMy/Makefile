@@ -57,8 +57,11 @@ release: min-caml.html
 for_lib:
 	ocamlc -a $(FORLIB) -o mincaml_lib.cma
 
-min-rt:
-	../simulator/sim2 ./test/min-rt/min-rt-new.s < ./test/min-rt/sld/contest.sld | tee ./test/min-rt/sld/contest.ppm
+min-rt: 
+	make native-code
+	cd ../simulator; make
+	cd ../min-camlMy; ./sh/do_test.sh -c ./test/min-rt/min-rt-new
+	../simulator/sim2 ./test/min-rt/min-rt-new.s -c < ./test/min-rt/sld/contest.sld | tee ./test/min-rt/sld/contest.ppm
 
 pika:
 	../simulator/sim2 ./test/min-rt/min-rt-new.s < ./test/min-rt/sld/pika.sld | tee ./test/min-rt/sld/pika.ppm

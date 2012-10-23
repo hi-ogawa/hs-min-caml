@@ -1,0 +1,253 @@
+(pc): 0, (inst): 	addu	$r1, $r2, $r3
+name:addu, op: 0, rs:2, rt:3, rd:1, sham:0, fu:33, imme:0, fmt0
+
+(pc): 1, (inst): 	subu	$r1, $r2, $r3
+name:subu, op: 0, rs:2, rt:3, rd:1, sham:0, fu:35, imme:0, fmt0
+
+(pc): 2, (inst): 	addi	$r1, $r2, 3
+name:addi, op: 8, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 3, (inst): 	lw	$r1, 3($r2)
+name:lw, op: 35, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 4, (inst): 	sw	$r1, 3($r2)
+name:sw, op: 43, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 5, (inst): 	lui	$r1, 2
+name:lui, op: 15, rs:0, rt:1, rd:0, sham:0, fu:0, imme:2, fmt0
+
+(pc): 6, (inst): 	slt	$r1, $r2, $r3
+name:slt, op: 0, rs:2, rt:3, rd:1, sham:0, fu:42, imme:0, fmt0
+
+(pc): 7, (inst): 	sll	$r1, $r2, 3
+name:sll, op: 0, rs:2, rt:0, rd:1, sham:3, fu:0, imme:0, fmt0
+
+(pc): 8, (inst): 	sra	$r1, $r2, 3
+name:sra, op: 0, rs:2, rt:0, rd:1, sham:3, fu:3, imme:0, fmt0
+
+(pc): 9, (inst): 	beq	$r1, $r2, .label
+name:beq, op: 4, rs:2, rt:1, rd:0, sham:0, fu:0, imme:31, fmt0
+
+(pc): 10, (inst): 	bne	$r1, $r2, .label
+name:bne, op: 5, rs:2, rt:1, rd:0, sham:0, fu:0, imme:30, fmt0
+
+(pc): 11, (inst): 	j	.label
+name:j, op: 2, rs:0, rt:0, rd:0, sham:0, fu:0, imme:41, fmt0
+
+(pc): 12, (inst): 	jr	$r1
+name:jr, op: 0, rs:1, rt:0, rd:0, sham:0, fu:8, imme:0, fmt0
+
+(pc): 13, (inst): 	jal	.label
+name:jal, op: 3, rs:0, rt:0, rd:0, sham:0, fu:0, imme:41, fmt0
+
+(pc): 14, (inst): 	lwcl	$f1, 3($r2)
+name:lwcl, op: 49, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 15, (inst): 	swcl	$f1, 3($r2)
+name:swcl, op: 57, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 16, (inst): 	input	$r1
+name:input, op: 24, rs:1, rt:0, rd:0, sham:0, fu:0, imme:0, fmt0
+
+(pc): 17, (inst): 	output	$r1
+name:output, op: 24, rs:1, rt:0, rd:0, sham:0, fu:1, imme:0, fmt0
+
+(pc): 18, (inst): 	ori	$r1, $r2, 3
+name:ori, op: 13, rs:2, rt:1, rd:0, sham:0, fu:0, imme:3, fmt0
+
+(pc): 19, (inst): 	add.s	$f1, $f2, $f3
+name:add.s, op: 17, rs:2, rt:3, rd:1, sham:0, fu:0, imme:0, fmt16
+
+(pc): 20, (inst): 	sub.s	$f1, $f2, $f3
+name:sub.s, op: 17, rs:2, rt:3, rd:1, sham:0, fu:1, imme:0, fmt16
+
+(pc): 21, (inst): 	mul.s	$f1, $f2, $f3
+name:mul.s, op: 17, rs:2, rt:3, rd:1, sham:0, fu:2, imme:0, fmt16
+
+(pc): 22, (inst): 	div.s	$f1, $f2, $f3
+name:div.s, op: 17, rs:2, rt:3, rd:1, sham:0, fu:3, imme:0, fmt16
+
+(pc): 23, (inst): 	c.eq.s	$f1, $f2
+name:c.eq.s, op: 17, rs:1, rt:2, rd:0, sham:0, fu:50, imme:0, fmt16
+
+(pc): 24, (inst): 	c.le.s	$f1, $f2
+name:c.le.s, op: 17, rs:1, rt:2, rd:0, sham:0, fu:62, imme:0, fmt16
+
+(pc): 25, (inst): 	bclt	.label
+name:bclt, op: 17, rs:0, rt:1, rd:0, sham:0, fu:0, imme:15, fmt8
+
+(pc): 26, (inst): 	bclf	.label
+name:bclf, op: 17, rs:0, rt:0, rd:0, sham:0, fu:0, imme:14, fmt8
+
+(pc): 27, (inst): 	lfh	$f1, 2
+name:lfh, op: 50, rs:0, rt:1, rd:0, sham:0, fu:0, imme:2, fmt0
+
+(pc): 28, (inst): 	lfl	$f1, 2
+name:lfl, op: 48, rs:0, rt:1, rd:0, sham:0, fu:0, imme:2, fmt0
+
+(pc): 29, (inst): 	fmove	$f1, $f2
+name:fmove, op: 17, rs:2, rt:0, rd:1, sham:0, fu:4, imme:0, fmt16
+
+(pc): 30, (inst): 	fneg	$f1, $f2
+name:fneg, op: 17, rs:2, rt:0, rd:1, sham:0, fu:5, imme:0, fmt16
+
+(pc): 31, (inst): 	la	$r1, .label
+name:lui, op: 15, rs:0, rt:1, rd:0, sham:0, fu:0, imme:0, fmt0
+
+(pc): 32, (inst): 	(mne) 	la	$r1, .label
+name:ori, op: 13, rs:0, rt:1, rd:0, sham:0, fu:0, imme:41, fmt0
+
+(pc): 33, (inst): 	bgt	$r1, $r2, .label
+name:slt, op: 0, rs:2, rt:1, rd:1, sham:0, fu:42, imme:0, fmt0
+
+(pc): 34, (inst): 	(mne) 	bgt	$r1, $r2, .label
+name:bne, op: 5, rs:0, rt:1, rd:0, sham:0, fu:0, imme:6, fmt0
+
+(pc): 35, (inst): 	blt	$r1, $r2, .label
+name:slt, op: 0, rs:1, rt:2, rd:1, sham:0, fu:42, imme:0, fmt0
+
+(pc): 36, (inst): 	(mne) 	blt	$r1, $r2, .label
+name:bne, op: 5, rs:0, rt:1, rd:0, sham:0, fu:0, imme:4, fmt0
+
+(pc): 37, (inst): 	bge	$r1, $r2, .label
+name:slt, op: 0, rs:1, rt:2, rd:1, sham:0, fu:42, imme:0, fmt0
+
+(pc): 38, (inst): 	(mne) 	bge	$r1, $r2, .label
+name:beq, op: 4, rs:0, rt:1, rd:0, sham:0, fu:0, imme:2, fmt0
+
+(pc): 39, (inst): 	ble	$r1, $r2, .label
+name:slt, op: 0, rs:2, rt:1, rd:1, sham:0, fu:42, imme:0, fmt0
+
+(pc): 40, (inst): 	(mne) 	ble	$r1, $r2, .label
+name:beq, op: 4, rs:0, rt:1, rd:0, sham:0, fu:0, imme:0, fmt0
+
+(pc): 41, (label): .label, (inst): 	halt
+name:halt, op: 4, rs:0, rt:0, rd:0, sham:0, fu:0, imme:-1, fmt0
+
+-----------------------------------------------------------
+
+(pc): 0, (inst): 	addu	$r1, $r2, $r3
+name:addu, op:0x0, rs:2, rt:3, rd:1, sham:0, fu: 0x21, imme:0, fmt: 0x0
+
+(pc): 1, (inst): 	subu	$r1, $r2, $r3
+name:subu, op:0x0, rs:2, rt:3, rd:1, sham:0, fu: 0x23, imme:0, fmt: 0x0
+
+(pc): 2, (inst): 	addi	$r1, $r2, 3
+name:addi, op:0x8, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 3, (inst): 	lw	$r1, 3($r2)
+name:lw, op:0x23, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 4, (inst): 	sw	$r1, 3($r2)
+name:sw, op:0x2b, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 5, (inst): 	lui	$r1, 2
+name:lui, op:0xf, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:2, fmt: 0x0
+
+(pc): 6, (inst): 	slt	$r1, $r2, $r3
+name:slt, op:0x0, rs:2, rt:3, rd:1, sham:0, fu: 0x2a, imme:0, fmt: 0x0
+
+(pc): 7, (inst): 	sll	$r1, $r2, 3
+name:sll, op:0x0, rs:2, rt:0, rd:1, sham:3, fu: 0x0, imme:0, fmt: 0x0
+
+(pc): 8, (inst): 	sra	$r1, $r2, 3
+name:sra, op:0x0, rs:2, rt:0, rd:1, sham:3, fu: 0x3, imme:0, fmt: 0x0
+
+(pc): 9, (inst): 	beq	$r1, $r2, .label
+name:beq, op:0x4, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:31, fmt: 0x0
+
+(pc): 10, (inst): 	bne	$r1, $r2, .label
+name:bne, op:0x5, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:30, fmt: 0x0
+
+(pc): 11, (inst): 	j	.label
+name:j, op:0x2, rs:0, rt:0, rd:0, sham:0, fu: 0x0, imme:41, fmt: 0x0
+
+(pc): 12, (inst): 	jr	$r1
+name:jr, op:0x0, rs:1, rt:0, rd:0, sham:0, fu: 0x8, imme:0, fmt: 0x0
+
+(pc): 13, (inst): 	jal	.label
+name:jal, op:0x3, rs:0, rt:0, rd:0, sham:0, fu: 0x0, imme:41, fmt: 0x0
+
+(pc): 14, (inst): 	lwcl	$f1, 3($r2)
+name:lwcl, op:0x31, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 15, (inst): 	swcl	$f1, 3($r2)
+name:swcl, op:0x39, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 16, (inst): 	input	$r1
+name:input, op:0x18, rs:1, rt:0, rd:0, sham:0, fu: 0x0, imme:0, fmt: 0x0
+
+(pc): 17, (inst): 	output	$r1
+name:output, op:0x18, rs:1, rt:0, rd:0, sham:0, fu: 0x1, imme:0, fmt: 0x0
+
+(pc): 18, (inst): 	ori	$r1, $r2, 3
+name:ori, op:0xd, rs:2, rt:1, rd:0, sham:0, fu: 0x0, imme:3, fmt: 0x0
+
+(pc): 19, (inst): 	add.s	$f1, $f2, $f3
+name:add.s, op:0x11, rs:2, rt:3, rd:1, sham:0, fu: 0x0, imme:0, fmt: 0x10
+
+(pc): 20, (inst): 	sub.s	$f1, $f2, $f3
+name:sub.s, op:0x11, rs:2, rt:3, rd:1, sham:0, fu: 0x1, imme:0, fmt: 0x10
+
+(pc): 21, (inst): 	mul.s	$f1, $f2, $f3
+name:mul.s, op:0x11, rs:2, rt:3, rd:1, sham:0, fu: 0x2, imme:0, fmt: 0x10
+
+(pc): 22, (inst): 	div.s	$f1, $f2, $f3
+name:div.s, op:0x11, rs:2, rt:3, rd:1, sham:0, fu: 0x3, imme:0, fmt: 0x10
+
+(pc): 23, (inst): 	c.eq.s	$f1, $f2
+name:c.eq.s, op:0x11, rs:1, rt:2, rd:0, sham:0, fu: 0x32, imme:0, fmt: 0x10
+
+(pc): 24, (inst): 	c.le.s	$f1, $f2
+name:c.le.s, op:0x11, rs:1, rt:2, rd:0, sham:0, fu: 0x3e, imme:0, fmt: 0x10
+
+(pc): 25, (inst): 	bclt	.label
+name:bclt, op:0x11, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:15, fmt: 0x8
+
+(pc): 26, (inst): 	bclf	.label
+name:bclf, op:0x11, rs:0, rt:0, rd:0, sham:0, fu: 0x0, imme:14, fmt: 0x8
+
+(pc): 27, (inst): 	lfh	$f1, 2
+name:lfh, op:0x32, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:2, fmt: 0x0
+
+(pc): 28, (inst): 	lfl	$f1, 2
+name:lfl, op:0x30, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:2, fmt: 0x0
+
+(pc): 29, (inst): 	fmove	$f1, $f2
+name:fmove, op:0x11, rs:2, rt:0, rd:1, sham:0, fu: 0x4, imme:0, fmt: 0x10
+
+(pc): 30, (inst): 	fneg	$f1, $f2
+name:fneg, op:0x11, rs:2, rt:0, rd:1, sham:0, fu: 0x5, imme:0, fmt: 0x10
+
+(pc): 31, (inst): 	la	$r1, .label
+name:lui, op:0xf, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:0, fmt: 0x0
+
+(pc): 32, (inst): 	(mne) 	la	$r1, .label
+name:ori, op:0xd, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:41, fmt: 0x0
+
+(pc): 33, (inst): 	bgt	$r1, $r2, .label
+name:slt, op:0x0, rs:2, rt:1, rd:1, sham:0, fu: 0x2a, imme:0, fmt: 0x0
+
+(pc): 34, (inst): 	(mne) 	bgt	$r1, $r2, .label
+name:bne, op:0x5, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:6, fmt: 0x0
+
+(pc): 35, (inst): 	blt	$r1, $r2, .label
+name:slt, op:0x0, rs:1, rt:2, rd:1, sham:0, fu: 0x2a, imme:0, fmt: 0x0
+
+(pc): 36, (inst): 	(mne) 	blt	$r1, $r2, .label
+name:bne, op:0x5, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:4, fmt: 0x0
+
+(pc): 37, (inst): 	bge	$r1, $r2, .label
+name:slt, op:0x0, rs:1, rt:2, rd:1, sham:0, fu: 0x2a, imme:0, fmt: 0x0
+
+(pc): 38, (inst): 	(mne) 	bge	$r1, $r2, .label
+name:beq, op:0x4, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:2, fmt: 0x0
+
+(pc): 39, (inst): 	ble	$r1, $r2, .label
+name:slt, op:0x0, rs:2, rt:1, rd:1, sham:0, fu: 0x2a, imme:0, fmt: 0x0
+
+(pc): 40, (inst): 	(mne) 	ble	$r1, $r2, .label
+name:beq, op:0x4, rs:0, rt:1, rd:0, sham:0, fu: 0x0, imme:0, fmt: 0x0
+
+(pc): 41, (label): .label, (inst): 	halt
+name:halt, op:0x4, rs:0, rt:0, rd:0, sham:0, fu: 0x0, imme:-1, fmt: 0x0

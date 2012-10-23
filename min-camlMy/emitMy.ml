@@ -61,7 +61,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(x), Setf(d) 
     -> Printf.fprintf oc "\tlfh\t%s, %ld\n" x (gethi d);
        Printf.fprintf oc "\tlfl\t%s, %ld\n" x (getlo d)
-  | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tla\t%s, %s\n" x y		(* load address擬似命令 *)
+  | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tla\t%s, .%s\n" x y		(* load address擬似命令 *)
   | NonTail(x), Mov(y) when x = y -> ()
   | NonTail(x), Mov(y) -> Printf.fprintf oc "\taddi\t%s, %s, 0\n" x y
   | NonTail(x), Neg(y) -> Printf.fprintf oc "\tsubu\t%s, %s, %s\n" x "$r0"  y
@@ -160,7 +160,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       then (Printf.fprintf oc "\tinput\t$r2\n";
 	    Printf.fprintf oc "\tjr\t$r31\n")
       else
-	Printf.fprintf oc "\tj\t%s\t! calldir-tail\n" x;
+	Printf.fprintf oc "\tj\t.%s\t! calldir-tail\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
       g'_args oc [(x, reg_cl)] ys zs;
       let ss = stacksize () in
@@ -169,11 +169,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tsw\t%s, %d(%s)\t! callcls\n" reg_ra (-ss) reg_sp;
       Printf.fprintf oc "\tlw\t%s, 0(%s)\t! callcls\n" reg_sw reg_cl;
       Printf.fprintf oc "\taddi\t%s, %s, %d\t! callcls\n" reg_sp reg_sp (-ss);
-      Printf.fprintf oc "\tjal\t%s\t! callcls\n" j_label2;
-      Printf.fprintf oc "\tj\t%s\t! callcls\n" j_label1;
-      Printf.fprintf oc "%s:\t! callcls\n" j_label2;
+      Printf.fprintf oc "\tjal\t.%s\t! callcls\n" j_label2;
+      Printf.fprintf oc "\tj\t.%s\t! callcls\n" j_label1;
+      Printf.fprintf oc ".%s:\t! callcls\n" j_label2;
       Printf.fprintf oc "\tjr\t%s\t! callcls\n" reg_sw;			(* jalだったとこ ちょっと怪しい *)
-      Printf.fprintf oc "%s:\t! callcls\n" j_label1;
+      Printf.fprintf oc ".%s:\t! callcls\n" j_label1;
       Printf.fprintf oc "\taddi\t%s, %s, %d\t! callcls\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\t! callcls\n" reg_ra (-ss) reg_sp;
       if List.mem a allregs && a <> regs.(0) then		(* 返り値の型がUnitのときはregAllocで、a = [%g0]になってるから *)
@@ -195,7 +195,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
 	let ss = stacksize () in
 	Printf.fprintf oc "\tsw\t%s, %d(%s)\t! calldir\n" reg_ra (-ss) reg_sp;
 	Printf.fprintf oc "\taddi\t%s, %s, %d\t! calldir\n" reg_sp reg_sp (-ss);
-	Printf.fprintf oc "\tjal\t%s\t! calldir\n" x;
+	Printf.fprintf oc "\tjal\t.%s\t! calldir\n" x;
 	Printf.fprintf oc "\taddi\t%s, %s, %d\t! calldir\n" reg_sp reg_sp ss;
 	Printf.fprintf oc "\tlw\t%s, %d(%s)\t! calldir\n" reg_ra (-ss) reg_sp;
 	if List.mem a allregs && a <> regs.(0) then		(* 返り値の型がUnitのときはregAllocで、a = [%g0]になってるから *)
@@ -207,10 +207,10 @@ and g'_tail_if oc e1 e2 b bn x y' =
   match y' with
     | C(_) -> assert false
     | V(y) -> let b_else = Id.genid (b ^ "_else") in
-	      Printf.fprintf oc "\t%s\t%s, %s, %s\n" bn x y b_else;
+	      Printf.fprintf oc "\t%s\t%s, %s, .%s\n" bn x y b_else;
 	      let stackset_back = !stackset in
 	      g oc (Tail, e1);
-	      Printf.fprintf oc "%s:\n" b_else;
+	      Printf.fprintf oc ".%s:\n" b_else;
 	      stackset := stackset_back;
 	      g oc (Tail, e2)
 and g'_non_tail_if oc dest e1 e2 b bn x y' =
@@ -218,37 +218,37 @@ match y' with
   | C(_) -> assert false
   | V(y) -> let b_else = Id.genid (b ^ "_else") in
 	    let b_cont = Id.genid (b ^ "_cont") in
-	    Printf.fprintf oc "\t%s\t%s, %s, %s\n" bn x y b_else;
+	    Printf.fprintf oc "\t%s\t%s, %s, .%s\n" bn x y b_else;
 	    let stackset_back = !stackset in
 	    g oc (dest, e1);
 	    let stackset1 = !stackset in
-	    Printf.fprintf oc "\tj\t%s\n" b_cont;
-	    Printf.fprintf oc "%s:\n" b_else;
+	    Printf.fprintf oc "\tj\t.%s\n" b_cont;
+	    Printf.fprintf oc ".%s:\n" b_else;
 	    stackset := stackset_back;
 	    g oc (dest, e2);
-	    Printf.fprintf oc "%s:\n" b_cont;
+	    Printf.fprintf oc ".%s:\n" b_cont;
 	    let stackset2 = !stackset in
 	    stackset := S.inter stackset1 stackset2
 and g'_tail_ifF oc e1 e2 b bn =
   let b_else = Id.genid (b ^ "_else") in
-  Printf.fprintf oc "\t%s\t%s\n" bn b_else;
+  Printf.fprintf oc "\t%s\t.%s\n" bn b_else;
   let stackset_back = !stackset in
   g oc (Tail, e1);
-  Printf.fprintf oc "%s:\n" b_else;
+  Printf.fprintf oc ".%s:\n" b_else;
   stackset := stackset_back;
   g oc (Tail, e2)
 and g'_non_tail_ifF oc dest e1 e2 b bn =
   let b_else = Id.genid (b ^ "_else") in
   let b_cont = Id.genid (b ^ "_cont") in
-  Printf.fprintf oc "\t%s\t%s\n" bn b_else;
+  Printf.fprintf oc "\t%s\t.%s\n" bn b_else;
   let stackset_back = !stackset in
   g oc (dest, e1);
   let stackset1 = !stackset in
-  Printf.fprintf oc "\tj\t%s\n" b_cont;
-  Printf.fprintf oc "%s:\n" b_else;
+  Printf.fprintf oc "\tj\t.%s\n" b_cont;
+  Printf.fprintf oc ".%s:\n" b_else;
   stackset := stackset_back;
   g oc (dest, e2);
-  Printf.fprintf oc "%s:\n" b_cont;
+  Printf.fprintf oc ".%s:\n" b_cont;
   let stackset2 = !stackset in
   stackset := S.inter stackset1 stackset2
 and g'_args oc x_reg_cl ys zs =
@@ -271,17 +271,17 @@ and g'_args oc x_reg_cl ys zs =
     (shuffle reg_fsw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
-  Printf.fprintf oc "%s:\n" x;
+  Printf.fprintf oc ".%s:\n" x;
   stackset := S.empty;
   stackmap := [];
   g oc (Tail, e)
 
 let f oc (Prog(fundefs, e)) =
   Format.eprintf "generating assembly...@.";
-  Printf.fprintf oc "\tj\tmin_caml_start\n";		(* mainにジャンプ *)
+  Printf.fprintf oc "\tj\t.min_caml_start\n";		(* mainにジャンプ *)
   List.iter (fun fundef -> h oc fundef) fundefs;
-  Printf.fprintf oc "min_caml_start:\n";
-  Printf.fprintf oc "\tlui\t%s, %d\t! init reg_sp\n" reg_sp 0x0400;		(* reg_spの初期化 0x00400000 (22bitで表現できる領域を使う)*)
+  Printf.fprintf oc ".min_caml_start:\n";
+  Printf.fprintf oc "\tlui\t%s, %d\t! init reg_sp\n" reg_sp 0x0040;		(* reg_spの初期化 0x00400000 (22bitで表現できる領域を使う)*)
   Printf.fprintf oc "\tori\t%s, %s, %d\t! init reg_sp\n" reg_sp reg_sp 0x0000;	(* reg_spの初期化 0x00400000 *)
   Printf.fprintf oc "\tori\t%s, %s, %d\t! init reg_hp \n" reg_hp "$r0" 0;	(* reg_hpの初期化 0x00000000 *)
   stackset := S.empty;

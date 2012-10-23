@@ -16,8 +16,9 @@ set<int> mon_ram;
 
 bool halt = false;
 bool print = true;
+extern FILE* inputFile;
 
-int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
+int simulator(vector<inst> insts, map<int, string> addrToLabel){
 
   ireg[0] = 0;	// zero register
 
@@ -28,10 +29,6 @@ int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
   //   cerr <<", sham:"<< insts[i].sh <<", imme:"<< insts[i].im << endl;
   // }
 
-  if(cont){
-    print = false; toBp(insts); return 0;
-  }
-  
   string command;
   while(cerr << ">> ", getline(cin,command)){
 
@@ -152,7 +149,7 @@ void execInst(inst nowi){
   else if(nowi.name == "lw"){
     int mem_addr = ireg[nowi.rs] + nowi.im;
     if(mon_ram.find(mem_addr) != mon_ram.end()){
-      if(0 <= mem_addr && mem_addr <= 0x3fffff){
+      if(0 <= mem_addr && mem_addr <= DATA_RAM_SIZE){
 	mon_ireg.insert(nowi.rt);	
 	ireg[nowi.rt] = ram[mem_addr/4];
       }
@@ -163,7 +160,7 @@ void execInst(inst nowi){
   }
   else if(nowi.name == "sw"){
     int mem_addr = ireg[nowi.rs] + nowi.im;
-    if(0 <= mem_addr && mem_addr <= 0x3fffff){
+    if(0 <= mem_addr && mem_addr <= DATA_RAM_SIZE){
       mon_ram.insert(mem_addr);
       ram[mem_addr/4] = ireg[nowi.rt];
     }
@@ -205,14 +202,18 @@ void execInst(inst nowi){
   }
   else if(nowi.name == "input"){
     mon_ireg.insert(nowi.rs);	
-    if(print)
-      cerr << "INPUT PLEASE > ";
-    char c = getchar();
+    // if(print)
+    //   cerr << "INPUT PLEASE > ";
+    char c;
+    if(inputFile != NULL)
+      c = getc(inputFile);
+    else
+      c = getchar();
     ireg[nowi.rs] = (int)c;
   }
   else if(nowi.name == "output"){
-    if(print)
-      cerr << "OUTPUT > ";
+    // if(print)
+    //   cerr << "OUTPUT > ";
     cout << (char)(ireg[nowi.rs] & 0x000000FF);
   }
 

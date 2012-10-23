@@ -173,7 +173,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
   with Unify(t1, t2) -> raise (Error(get_pos e, deref_typ t1, deref_typ t2))
 
 let f e =
-  extenv := M.empty;
+  extenv := M.add "sqrt" (Type.Fun ([Type.Float], Type.Float)) M.empty;
   ignore (g M.empty e);
   extenv := M.map deref_typ !extenv;
   deref_term e

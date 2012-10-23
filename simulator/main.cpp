@@ -1,19 +1,19 @@
 #include "asm.h"
 
 map<string, int> labelNames;	// labelからaddrへの連想配列(label解決で利用)
-map<int, string> addrToLabel;	// 上の逆バージョン(sim上の表示用)
+map<int, string> addrToLabel;	// 上の逆
 vector<pair<inst,bool> > pre_insts;	// label未解決の命令列
 vector<inst> insts;			// label解決後の命令列(op, fu以外は格納済み)
 
-int cur = 1;
-bool error = false;
+int cur = 1;		// error時の行表示
+bool error = false;	// truanse error
 bool cont = false;	// sim option
 
 char buffer[MAX_LINE_SIZE];	// アセンブリの１行
 char instName[MAX_LINE_SIZE];	// 命令名
 
 FILE* srcFile;
-
+FILE* inputFile = NULL;
 
 int main(int argc, char** argv){
   //  <USAGE>
@@ -24,20 +24,21 @@ int main(int argc, char** argv){
   //   $ ./simulator src(~.s)			==>>  step simulation
 
   if((srcFile = fopen(argv[1], "r")) == NULL){
-    cerr << "error: fopen, couldn't open > " << argv[1] << endl;
+    cerr << "error: fopen, couldn't open " << argv[1] << endl;
     return 1;
   }
 
   transeInstructions();
 
-  // if(error){
-  //   cerr << "error occurred, so return 1" << endl;
-  //   return 1;
-  // }
+  if(error){
+    cerr << "error occurred, so return 1" << endl;
+    return 1;
+  }
 
-  if(argc == 3){
-    if(strcmp(argv[2], "-c") != 0){
-      ofstream ofs(argv[2]);
+  // option check
+  if(argc >= 3){		
+    if(strcmp(argv[2], "-b") == 0){
+      ofstream ofs(argv[3]);
       cerr << "start: to binary code" << endl;
       for(int i=0; i < (int)insts.size(); i++){
 	string bin = encode_line(insts[i]);
@@ -45,11 +46,44 @@ int main(int argc, char** argv){
       }
       return 0;
     }
-    cont = true;
+    if(strcmp(argv[2], "-i") == 0){
+      if((inputFile = fopen(argv[3], "r")) == NULL){
+	cerr << "error: fopen, couldn't open " << argv[3] << endl;
+	return 1;
+      }
+      cerr << "input from file" << endl;
+    }
+    if(strcmp(argv[2], "-c") == 0){
+      cont = true;
+      cerr << "continuation" << endl;
+    }
+    if(strcmp(argv[2], "-ci") == 0){
+      cont = true;
+      cerr << "continuation" << endl;
+      if((inputFile = fopen(argv[3], "r")) == NULL){
+	cerr << "error: fopen, couldn't open " << argv[3] << endl;
+	return 1;
+      }
+      cerr << "input from file" << endl;
+    }
+    
   }
 
+
+  //  debug  print (real instructions (not nmemonic))
+  // for(int i=0; i < (int)insts.size(); i++){
+  //   cerr << "(pc): " << i;
+  //   if(addrToLabel.find(i) != addrToLabel.end())
+  //     cerr <<", (label): "<< addrToLabel.find(i)->second;
+  //   cerr<<", (inst): "<<insts[i].line;
+  //   cerr<<"name:"<<insts[i].name<< hex << ", op:0x"<<insts[i].op<< dec;
+  //   cerr<<", rs:"<< insts[i].rs <<", rt:"<< insts[i].rt <<", rd:"<< insts[i].rd;
+  //   cerr<<", sham:"<< insts[i].sh <<hex<<", fu: 0x"<< insts[i].fu <<dec<<", imme:"<< insts[i].im; 
+  //   cerr<<hex<<", fmt: 0x"<< insts[i].fmt<<dec<<endl<<endl;
+  // }
+
   cerr << "simulation started" << endl;
-  simulator(insts, addrToLabel, cont);
+  simulator();
   cerr << "simulation ended" << endl;
 
   return 0;
@@ -58,6 +92,7 @@ int main(int argc, char** argv){
 void transeInstructions(void){
   char* str = NULL;
 
+  cerr << "start: parsing asm" << endl;
   while(fgets(buffer, MAX_LINE_SIZE, srcFile) != NULL){
 
     //空行はスルー
@@ -89,6 +124,7 @@ void transeInstructions(void){
   }
   cerr << "ended: parsing asm" << endl;
 
+  cerr << "start: label resolution" << endl;
   //label解決
   for(int i=0; i < (int)pre_insts.size(); i++){
     if(pre_insts[i].second){
@@ -101,14 +137,6 @@ void transeInstructions(void){
 
   cerr << "ended: label resolution" << endl;
 
-
-  //debug print
-  // cerr << "debug print" << endl;
-  // map<string, int>::iterator it = labelNames.begin();
-  // while(it != labelNames.end()){
-  //   cerr << "lable: " << (*it).first << ", addr: " << (*it).second << endl;
-  //   it++;
-  // }
 }
 
 inst label_resolve(inst pre, int now){
@@ -116,7 +144,7 @@ inst label_resolve(inst pre, int now){
   bool error = false;
 
   // relative jump
-  if( pre.name == string("bne") || pre.name == string("beq") || pre.name == string("bclt") || pre.name == string("bclf") ){
+  if( pre.name == "bne" || pre.name == "beq" || pre.name == "bclt" || pre.name == "bclf" ){
 
     // labelがちゃんと登録されてるか確認
     if(labelNames.count(pre.label)){
@@ -128,7 +156,7 @@ inst label_resolve(inst pre, int now){
   }
 
   // absolute jump
-  else if(pre.name == string("j") || pre.name == string("jal")){
+  else if(pre.name == "j" || pre.name == "jal"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
       pre.im = addr;
@@ -136,7 +164,7 @@ inst label_resolve(inst pre, int now){
     }
     cerr << "error: label_resolve: notfound" <<  pre.label <<endl;
   }
-  else if(pre.name == string("lui")){
+  else if(pre.name == "lui"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
       pre.im = (addr) & 0xFFFF0000;
@@ -144,7 +172,7 @@ inst label_resolve(inst pre, int now){
     }
     cerr << "error: label_resolve: notfound" << pre.label << endl;
   }
-  else if(pre.name == string("ori")){
+  else if(pre.name == "ori"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
       pre.im = (addr) & 0x0000FFFF;
@@ -158,7 +186,6 @@ inst label_resolve(inst pre, int now){
 }
 
 
-//(float関係の)opコード, functはまだ入れてない	// こっから下はかなり長い単純作業
 vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   int rs = 0;
   int rt = 0;
@@ -167,6 +194,8 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   inst i1, i2;
   i1.line = string(buffer);	// simulatorの出力
   i2.line = string("\t(mne) ") + string(buffer);
+  i1.op = i1.rs = i1.rt = i1.rd = i1.sh = i1.fu = i1.im = i1.fmt = 0;
+  i2.op = i2.rs = i2.rt = i2.rd = i2.sh = i2.fu = i2.im = i2.fmt = 0;
 
   // return instruction and bool(use label or not)
   vector<pair<inst, bool> > instVec;
@@ -176,7 +205,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     if(sscanf(buffer, formRL, dummy, &rt, label) == 3){
       i1.ty = I_TYPE; i1.name = string("lui"); i1.rt = rt; i1.label = string(label);
       i1.op = 0xf;
-      i2.ty = I_TYPE; i2.name = string("ori"); i2.rt = rt; i2.label = string(label);
+      i2.ty = I_TYPE; i2.name = string("ori"); i2.rt = i2.rs = rt; i2.label = string(label);
       i2.op = 0xd;
       
       instVec.push_back(make_pair(i1, true));

@@ -1,9 +1,10 @@
 #!/bin/bash
 
-MINCAML='./min-caml'
-SIM1='../simulator/sim1'
+#MINCAML='./min-caml'
+MINCAMLOPT='./min-caml.opt'
+#SIM1='../simulator/sim1'
 SIM2='../simulator/sim2'
-SIM3='../sim/sim'
+#SIM3='../sim/sim'
 OCAML='ocaml'
 
 LIB_ML='./lib/mylib_ml.ml'
@@ -19,7 +20,7 @@ function compile(){
     FILE=$1
     echo "** COMPILING ${FILE} **" >&2
     cat ${LIB_ML} "${FILE}.ml" > "${FILE}__.ml"
-    ${MINCAML} "${FILE}__"
+    ${MINCAMLOPT} "${FILE}__"
     cat "${FILE}__.s" ${LIB_ASM} > "${FILE}.s"
     rm -rf "${FILE}__.ml" "${FILE}__.s"
 }
@@ -28,7 +29,7 @@ function simulate(){
     echo "** SIMULATING OCAML ${FILE} **" >&2
     ${OCAML} "${FILE}.ml" > "${FILE}.ans"
     echo "** SIMULATING MINCAML ${FILE} **" >&2
-    ${SIM2} "${FILE}.s" > "${FILE}.res"
+    ${SIM2} "${FILE}.s" -c > "${FILE}.res"
 }
 #
 # setting args or option
@@ -46,7 +47,6 @@ done
 #
 # start
 #
-make byte-code >& /dev/zero
 rm -rf "${TESTPATH}*__.ml"
 
 if [ ${FLG_A} -eq 1 ]	#### all file testing ####
@@ -81,12 +81,12 @@ then
 elif [ ${FLG_S} -eq 1 ] #### one file simulating ####
 then
     compile ${FILE}
-    ${SIM2} "${FILE}.s"
+    ${SIM2} "${FILE}.s" -c
 
 elif [ ${FLG_B} -eq 1 ] #### to binary ####
 then
     compile ${FILE}
-    ${SIM1} "${FILE}.s" "${FILE}.b"
+    ${SIM2} "${FILE}.s" -b "${FILE}.b"
     WC=`wc -l ${FILE}.b | cut -d ' ' -f 1`	# line num
     N_POW2=1					# 2のn乗
     while [ ${N_POW2} -lt ${WC} ]

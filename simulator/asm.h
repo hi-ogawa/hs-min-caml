@@ -71,7 +71,7 @@ inst label_resolve(inst, int);
 
 vector<pair<inst,bool> > mnemonic(string, char*);
 
-int simulator(vector<inst>, map<int, string>, bool);
+int simulator(void);
 
 void showRegs(void);
 
@@ -79,7 +79,7 @@ void showMems(void);
 
 void execInst(inst);
 
-int stepx(vector<inst>, ULLI);
+int stepx(ULLI);
 
 int toBp(vector<inst>);
 

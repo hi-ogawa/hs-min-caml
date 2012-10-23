@@ -5,151 +5,81 @@ float freg[INTREG_NUM];	// float register
 int ram[DATA_RAM_SIZE/4];	// data teritory	(word幅のみでアクセス)
 
 int fpcond;		// float condition register的な何か
-int pc = 0;		// program counter
+int pc;		// program counter
 
 ULLI inst_num = 0;
-int min_sp = 0x04000000;
-
-// set<int> b_point;		// break point
-// set<int> mon_ireg;
-// set<int> mon_freg;
-// set<int> mon_ram;
+int min_sp = DATA_RAM_SIZE;
 
 bool halt = false;
 bool print = false;
 
-int simulator(vector<inst> insts, map<int, string> addrToLabel, bool cont){
+vector<int> pcStatistics;
+extern bool cont;
+extern FILE* inputFile;
+extern vector<inst> insts;
+extern map<int,string> addrToLabel;
 
-  for(int i=0; i < DATA_RAM_SIZE/4; i++){
+int simulator(){
+  for(int i=0; i < DATA_RAM_SIZE/4; i++){	// ram初期化
     ram[i] = 0;
   }
-
   ireg[0] = 0;	// zero register
+  ireg[29] = DATA_RAM_SIZE;
+  pc = 0;
+  for(int i=0; i < (int)insts.size(); i++){
+    pcStatistics.push_back(0);
+  }
 
-  // debug print
-  // for(int i=0; i < insts.size(); i++){
-  //   cerr << insts[i].line;
-  //   cerr <<"name:"<< insts[i].name <<", rs:"<< insts[i].rs <<", rt:"<< insts[i].rt <<",rd:"<< insts[i].rd ;
-  //   cerr <<", sham:"<< insts[i].sh <<", imme:"<< insts[i].im << endl;
-  // }
-
-  ireg[29] = 0x04000000;
-
-  cont = true;
-
-  if(cont){
+  if(cont){	// -c のオプションの時
     while(1){
       if(halt) break;
-      // if(print){
-      // 	showRegs();
-      // }
-      // if(inst_num % 10000000 == 0)
-      // 	cerr << "print debug: " << ireg[29] << ", min_sp" << min_sp << endl;
       execInst(insts[pc]);
-      if(ireg[29] <= min_sp) min_sp = ireg[29];
-      // inst_num ++;
     }
-    cerr << "r29(stack-min): " << min_sp << ", " << "r30(heap): " << ireg[30] << endl;
-    cerr << "inst_num: " << inst_num << endl;
-    for(int i=0; i < DATA_RAM_SIZE/4; i+=10000){
-      cerr << "ram[" << i << "]: " << ram[i] << ", ";
-    }
-    return 0;
   }
-  
-  // string command;
-  // while(cerr << ">> ", getline(cin,command)){
+  else{
+    cerr << "debug mode" << endl;
+    string command;
+    while(cerr << ">> ", getline(cin,command)){
+      if(command == "step"){	// numだけ一気に命令実行
+	ULLI num; cin >> num;
+	getline(cin, command);	// 改行読み飛ばし
+	print = false;
+	stepx(num);
+	showRegs();
+      }
+      else if(command == "cont"){
+	print = false;
+	while(1){
+	  if(halt) break;
+	  execInst(insts[pc]);
+	}
+      }
+      else{
+	print = true;
+	execInst(insts[pc]);
+	showRegs();
+      }
 
-  //   if(command == "help"){
-  //     cerr << "(help), (r_set), (b_set), (step), (cont), (exit)" << endl;
-  //   }
-  //   else if(command == "r_set"){
-  //     ; // int r; cin >> r;
-  //     // mon_regs.insert(r);a
-  //   }
-  //   else if(command == "b_set"){
-  //     int b; cin >> b;
-  //     b_point.insert(b);
-  //   }
-  //   else if(command == "step"){
-  //     ULLI num; cin >> num;
-  //     print = false;
-  //     stepx(insts, num);
-  //   }
-  //   else if(command == "cont"){
-  //     print = false;
-  //     toBp(insts);
-  //   }
-  //   else if(command == "exit"){
-  //     return 0;
-  //   }
-  //   else{
-  //     print = true;
-  //     execInst(insts[pc]);
-  //   }
-  //   cerr<<endl<<endl;
-  //   cerr << inst_num << endl;
-  //   showRegs(); showMems();
-  //   cerr<<endl<<endl;
-
-  //   if(halt){
-  //     cerr << "! program halt !" << endl;
-  //     break;
-  //   }
-
+      if(halt){
+	cerr << "! program halt !" << endl;
+	break;
+      }
+    }
+  }
+  // showRegs();
+  // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
+  // cerr <<"inst_num: "<< inst_num << endl;
+  // for(int i=0; i < (int)pcStatistics.size(); i++){
+  //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
   // }
-
+  // for(int i=0; i < ireg[30] / 4; i+=1){
+  //   if(ram[i] == 0)
+  // 	cerr << "ram[" << i*4 << "]: " << ram[i] << endl;
+  // }
   return 0;
 }
 
-// int stepx(vector<inst> insts, ULLI num){
-//   if(halt){
-//     cerr << "! program halt !" << endl;
-//     return 0;
-//   }
-//   if(num <= 0)
-//     return 0;
-//   execInst(insts[pc]);
-//   return stepx(insts, num - 1);
-// }
-
-// int toBp(vector<inst> insts){
-
-//   // debug print
-//   // showRegs(); showMems();
-
-//   if(insts[pc].name == "halt"){
-//     halt = true; return 0;}
-//   if(b_point.find(pc) != b_point.end())
-//     return 0;
-//   inst nowi = insts[pc];
-//   execInst(nowi);
-//   return toBp(insts);
-// }
-
-// void showRegs(void){
-//   cerr << "ireg" << endl;;
-//   FOR(it, mon_ireg){
-//     cerr <<"R["<< (*it) <<"]: "<< ireg[(*it)] << ", ";
-//   }
-//   cerr << endl;
-//   cerr << "freg" << endl;
-//   FOR(it, mon_freg){
-//     cerr <<"F["<< (*it) <<"]: "<< freg[(*it)] << ", ";
-//   }
-//   cerr << endl;
-//   cerr << "FPcond: " << fpcond << endl;
-// }
-
-// void showMems(void){
-//   FOR(it, mon_ram){
-//     cerr <<"M["<< (*it) <<"]: "<< ram[(*it)/4]<< ", ";
-//   }
-//   cerr << endl;
-// }
-
 void showRegs(void){
-  cerr << "pc: " << pc << endl;
   cerr << "monitering register" << endl;
   for(int i=0; i < 32; i++){
     cerr << "reg[" << i << "]: " << ireg[i] << ", ";
@@ -161,20 +91,51 @@ void showRegs(void){
   cerr << endl;
 }
 
-void execInst(inst nowi){
-  if(print){
-    cerr << "inst_num: " << inst_num << endl;
-    cerr << "pc: " << (pc-1) << endl;
-    cerr << nowi.line << endl;
+// void showMems(void){
+//   FOR(it, mon_ram){
+//     cerr <<"M["<< (*it) <<"]: "<< ram[(*it)/4]<< ", ";
+//   }
+//   cerr << endl;
+// }
+
+int stepx(ULLI num){
+  for(ULLI i=0; i<num; i++){
+    if(halt){
+      return 0;
+    }
+    execInst(insts[pc]);
   }
-  pc += 1;
+  return 0;
+}
+
+void execInst(inst nowi){
+
+  if(ireg[29] <= min_sp) min_sp = ireg[29];  
+  if(inst_num % 10000000 == 0){
+    cerr << "inst_num: " << inst_num << ", heap: " << ireg[30] << endl;
+  }
+
+  if(print){
+    if(addrToLabel.find(pc) != addrToLabel.end())
+      cerr << "pc: " << pc << ", label: " << addrToLabel.find(pc)->second << endl;
+    else 
+      cerr << "pc: " << pc << endl;
+    cerr << nowi.line;
+    cerr <<"name:"<< nowi.name <<", rs:"<< nowi.rs;
+    cerr <<", rt:"<< nowi.rt <<",rd:"<< nowi.rd;
+    cerr <<", sham:"<< nowi.sh <<", imme:"<< nowi.im << endl;
+  }
+  pcStatistics[pc] = pcStatistics[pc] + 1;
+  inst_num ++;
+  pc ++;
+
 
   if(nowi.op == 0x4 && nowi.rs == 0 && nowi.rt == 0 && nowi.im==-1){//nowi.name == "halt" 一番最初に持ってくる(beqとopcodeかぶってるから)
     //    cerr << "halt" << endl;
     halt = true;
   }
   else if(nowi.op == 0x0 && nowi.fu == 0x21){	//nowi.name == "addu"
-//    cerr << "addu" << endl;
+    //    cerr << "addu" << endl;
     ireg[nowi.rd] = ireg[nowi.rs] + ireg[nowi.rt];
   }
   else if(nowi.op == 0x0 && nowi.fu == 0x23){	//nowi.name == "subu"
@@ -251,7 +212,11 @@ void execInst(inst nowi){
   }
   else if(nowi.op == 0x18 && nowi.fu == 0x00){//nowi.name == "input"
   //  cerr << "input" << endl;
-    char c = getchar();
+    char c;
+    if(inputFile != NULL)
+      c = getc(inputFile);
+    else
+      c = getchar();
     ireg[nowi.rs] = (int)c;
   }
   else if(nowi.op == 0x18 && nowi.fu == 0x01){//nowi.name == "output"
@@ -367,5 +332,5 @@ void execInst(inst nowi){
   //  cerr << "not found" << endl;
     cerr << "error: not defined instructions" << endl;
   }
-  
+
 }
