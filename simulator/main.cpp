@@ -42,7 +42,10 @@ int main(int argc, char** argv){
       cerr << "start: to binary code" << endl;
       for(int i=0; i < (int)insts.size(); i++){
 	string bin = encode_line(insts[i]);
-	ofs << bin;
+	if(addrToLabel.find(i) != addrToLabel.end())
+	  ofs << bin <<"\t(LABEL): "<< addrToLabel[i] << insts[i].line;
+	else
+	  ofs << bin << insts[i].line;
       }
       return 0;
     }
@@ -71,16 +74,16 @@ int main(int argc, char** argv){
 
 
   //  debug  print (real instructions (not nmemonic))
-  // for(int i=0; i < (int)insts.size(); i++){
-  //   cerr << "(pc): " << i;
-  //   if(addrToLabel.find(i) != addrToLabel.end())
-  //     cerr <<", (label): "<< addrToLabel.find(i)->second;
-  //   cerr<<", (inst): "<<insts[i].line;
-  //   cerr<<"name:"<<insts[i].name<< hex << ", op:0x"<<insts[i].op<< dec;
-  //   cerr<<", rs:"<< insts[i].rs <<", rt:"<< insts[i].rt <<", rd:"<< insts[i].rd;
-  //   cerr<<", sham:"<< insts[i].sh <<hex<<", fu: 0x"<< insts[i].fu <<dec<<", imme:"<< insts[i].im; 
-  //   cerr<<hex<<", fmt: 0x"<< insts[i].fmt<<dec<<endl<<endl;
-  // }
+  for(int i=0; i < (int)insts.size(); i++){
+    // cerr << "(pc): " << i;
+    // if(addrToLabel.find(i) != addrToLabel.end())
+    //   cerr <<", (label): "<< addrToLabel.find(i)->second;
+    // cerr<<", (inst): "<<insts[i].line;
+    // cerr<<"name:"<<insts[i].name<< hex << ", op:0x"<<insts[i].op<< dec;
+    // cerr<<", rs:"<< insts[i].rs <<", rt:"<< insts[i].rt <<", rd:"<< insts[i].rd;
+    // cerr<<", sham:"<< insts[i].sh <<hex<<", fu: 0x"<< insts[i].fu <<dec<<", imme:"<< insts[i].im; 
+    // cerr<<hex<<", fmt: 0x"<< insts[i].fmt<<dec<<endl<<endl;
+  }
 
   cerr << "simulation started" << endl;
   simulator();
@@ -193,7 +196,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   char label[MAX_LINE_SIZE];
   inst i1, i2;
   i1.line = string(buffer);	// simulatorの出力
-  i2.line = string("\t(mne) ") + string(buffer);
+  i2.line = "\t(MNE) " + string(buffer);
   i1.op = i1.rs = i1.rt = i1.rd = i1.sh = i1.fu = i1.im = i1.fmt = 0;
   i2.op = i2.rs = i2.rt = i2.rd = i2.sh = i2.fu = i2.im = i2.fmt = 0;
 
@@ -447,7 +450,8 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "input"){
     if(sscanf(buffer, formR, dummy, &(i1.rs)) == 2){
       i1.ty = R_TYPE; i1.name = string("input");
-      i1.op = 0x18; i1.fu = 0x00;
+      i1.op = 0x18; i1.fu = 0x00; i1.rt = i1.rd = i1.rs;
+      // とりあえずrs,rt,rd全部に突っ込む
 
       instVec.push_back(make_pair(i1, false));
       return instVec;
@@ -459,6 +463,9 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     if(sscanf(buffer, formR, dummy, &(i1.rs)) == 2){
       i1.ty = R_TYPE; i1.name = string("output");
       i1.op = 0x18; i1.fu = 0x01;
+      i1.rt = i1.rd = i1.rs;
+      // とりあえずrs,rt,rd全部に突っ込む
+
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }

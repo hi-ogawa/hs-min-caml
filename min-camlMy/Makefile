@@ -20,7 +20,7 @@ clean:: nobackup
 # ↓もし実装を改造したら、それに合わせて変える
 SOURCES = float.c type.ml id.ml m.ml s.ml \
 syntax.ml parserMy.mly lexerMy.mll typingMy.ml \
-kNormal.ml alpha.ml beta.ml assoc.ml \
+kNormal.ml alpha.ml elimEqExp.ml beta.ml assoc.ml \
 inline.ml constFold.ml elim.ml \
 closure.ml asmMy.ml virtualMy.ml \
 simmMy.ml regAllocMy.ml emitMy.ml \
@@ -30,10 +30,10 @@ mainMy.ml
 # 統合して一つのライブラリにし、ocaml interpreterでロードできるようにする
 FORLIB = type.cmo id.cmo m.cmo s.cmo syntax.cmo parserMy.cmo\
  lexerMy.cmo \
- typingMy.cmo kNormal.cmo  alpha.cmo  beta.cmo  assoc.cmo \
+ typingMy.cmo kNormal.cmo  alpha.cmo elimEqExp.cmo beta.cmo  assoc.cmo \
  inline.cmo  constFold.cmo  elim.cmo  closure.cmo  asmMy.cmo \
- virtualMy.cmo simmMy.cmo regAllocMy.cmo
-
+ virtualMy.cmo simmMy.cmo regAllocMy.cmo \
+debug_util.cmo debug_syntax.cmo debug_knormal.cmo debug_closure.cmo
 
 min-caml.html: main.mli main.ml id.ml m.ml s.ml \
 		syntax.ml type.ml parser.mly lexer.mll typing.mli typing.ml kNormal.mli kNormal.ml \
@@ -55,12 +55,11 @@ release: min-caml.html
 	cp Makefile stub.c SPARC/libmincaml.S min-caml.html min-caml.tar.gz ../htdocs/
 
 for_lib:
+	make byte-code
 	ocamlc -a $(FORLIB) -o mincaml_lib.cma
 
 min-rt: 
-	make native-code
-	cd ../simulator; make
-	cd ../min-camlMy; ./sh/do_test.sh -c ./test/min-rt/min-rt-new
+	./sh/do_test.sh -c ./test/min-rt/min-rt-new
 	../simulator/sim2 ./test/min-rt/min-rt-new.s -c < ./test/min-rt/sld/contest.sld | tee ./test/min-rt/sld/contest.ppm
 
 pika:

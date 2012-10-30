@@ -93,10 +93,17 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
       insert_let (g env e1)
 	(fun x -> insert_let (g env e2)
 	    (fun y -> FMul(x, y), Type.Float))
+  (* とりあえずFDivを関数適用finvに変える(一時的) *)	
+  (* | Syntax.FDiv(e1, e2) -> *)
+  (*     insert_let (g env e1) *)
+  (* 	(fun x -> insert_let (g env e2) *)
+  (* 	    (fun y -> FDiv(x, y), Type.Float)) *)
   | Syntax.FDiv(e1, e2) ->
-      insert_let (g env e1)
-	(fun x -> insert_let (g env e2)
-	    (fun y -> FDiv(x, y), Type.Float))
+    let z = Id.gentmp Type.Float in
+    insert_let (g env e1)
+      (fun x -> insert_let (g env e2)
+  	(fun y ->
+  	  (Let ((z, Type.Float), (ExtFunApp ("myfinv", [y])), FMul(x, z)), Type.Float)))
   | Syntax.Eq _ | Syntax.LE _ as cmp ->
       g env (Syntax.If(cmp, Syntax.Bool(true), Syntax.Bool(false)))
   | Syntax.If(Syntax.Not(e1), e2, e3) -> g env (Syntax.If(e1, e3, e2)) (* notによる分岐を変換 (caml2html: knormal_not) *)
@@ -139,17 +146,17 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 		  (fun x -> bind (xs @ [x]) e2s) in
 	  bind [] e2s (* left-to-right evaluation *)
       | _ -> assert false)
-  | Syntax.App(e1, e2s) ->
-      (match g env e1 with
+  | Syntax.App(e1, e2s) ->	(*このe1はVarとは限らない。反例: ./test/adder.ml) *)
+    (match g env e1 with
       | _, Type.Fun(_, t) as g_e1 ->
-	  insert_let g_e1
-	    (fun f ->
-	      let rec bind xs = function (* "xs" are identifiers for the arguments *)
-		| [] -> App(f, xs), t
-		| e2 :: e2s ->
-		    insert_let (g env e2)
-		      (fun x -> bind (xs @ [x]) e2s) in
-	      bind [] e2s) (* left-to-right evaluation *)
+	insert_let g_e1
+	  (fun f ->
+	    let rec bind xs = function (* "xs" are identifiers for the arguments *)
+	      | [] -> App(f, xs), t
+	      | e2 :: e2s ->
+		insert_let (g env e2)
+		  (fun x -> bind (xs @ [x]) e2s) in
+	    bind [] e2s) (* left-to-right evaluation *)
       | _ -> assert false)
   | Syntax.Tuple(es) ->
       let rec bind xs ts = function (* "xs" and "ts" are identifiers and types for the elements *)

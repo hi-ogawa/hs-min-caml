@@ -22,7 +22,7 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Let of (Id.t * Type.t) * t * t	(* let *)
   | Var of Id.t
   | LetRec of fundef * t
-  | App of t * t list
+  | App of t * t list		(* この時点では t == Var Id.t かな*)
   | Tuple of t list
   | LetTuple of (Id.t * Type.t) list * t * t
   | Array of t * t

@@ -34,7 +34,7 @@ function simulate(){
 #
 # setting args or option
 #
-while getopts af:c:s:b: OPT
+while getopts af:c:s:b:i: OPT
 do
     case $OPT in
 	"a" ) FLG_A=1 ;;				# all file testing

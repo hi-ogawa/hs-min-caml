@@ -128,7 +128,7 @@ exp: /* 一般の式 (caml2html: parser_exp) */
 	  then sra_of_div $1 $3 (rhs_start_pos 2)
 	  else App' ((Var' "div"), [$1; $3], rhs_start_pos 2)
 	}
-| exp EQUAL exp
+| exp EQUAL exp				/* ocamlの比較諸々が多相だった件 */
     { Eq'($1, $3, rhs_start_pos 2) }
 | exp LESS_GREATER exp
     { Not'(Eq'($1, $3, rhs_start_pos 2), rhs_start_pos 2) }
@@ -162,7 +162,7 @@ exp: /* 一般の式 (caml2html: parser_exp) */
     { LetRec'($3, $5, rhs_start_pos 1) }
 | exp actual_args
     %prec prec_app
-    { App'($1, $2, rhs_start_pos 1) }
+    { App'($1, $2, rhs_start_pos 1) }	/* 部分適応的なことが起こり得る(クロージャ) */
 | elems
     { Tuple'($1, rhs_start_pos 1) }
 | LET LPAREN pat RPAREN EQUAL exp IN exp

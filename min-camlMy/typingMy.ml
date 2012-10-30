@@ -127,7 +127,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	unify Type.Float (g env e2);
 	Type.Float
     | Eq'(e1, e2, _) | LE'(e1, e2, _) ->
-	unify (g env e1) (g env e2);
+	unify (g env e1) (g env e2);	(* 実はFloat,Int,Bool意外だったとしても、ここでは型エラーとしてはじかない *)
 	Type.Bool
     | If'(e1, e2, e3, _) ->
 	unify (g env e1) Type.Bool;
@@ -173,7 +173,14 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
   with Unify(t1, t2) -> raise (Error(get_pos e, deref_typ t1, deref_typ t2))
 
 let f e =
-  extenv := M.add "sqrt" (Type.Fun ([Type.Float], Type.Float)) M.empty;
+  (* print_char,input_charとアセンブリで書いたライブラリは外部関数なので型を明示する(arrayは別) *)
+  extenv := M.add_list [("print_char", (Type.Fun ([Type.Int], Type.Unit)))
+		       ;("input_char",(Type.Fun([Type.Unit], Type.Int)))
+		       ;("floor", (Type.Fun([Type.Float], Type.Float)))
+		       ;("float_of_int", (Type.Fun([Type.Int], Type.Float)))
+		       ;("int_of_float", (Type.Fun([Type.Float], Type.Int)))
+		       ;("truncate", (Type.Fun([Type.Float], Type.Int)))
+		       ;("sqrt", (Type.Fun ([Type.Float], Type.Float)))] M.empty;
   ignore (g M.empty e);
   extenv := M.map deref_typ !extenv;
   deref_term e

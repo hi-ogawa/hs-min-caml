@@ -77,6 +77,8 @@ void showRegs(void);
 
 void showMems(void);
 
+void showStat(void);
+
 void execInst(inst);
 
 int stepx(ULLI);

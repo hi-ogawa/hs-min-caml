@@ -198,17 +198,17 @@
 .min_caml_truncate:
 	j	.min_caml_int_of_float
 
-! * sqrt
-.min_caml_sqrt:		! 引数: $f0
+! * sqrt (とりあえずこっちは使わない)
+.min_caml_sqrt:		! 引数 $f0
 	addi	$r2, $r0, 10
-	lfh	$f1, 16256
+	lfh	$f1, 16256	! $f1 初期値 1.0
 	lfl	$f1, 0
-.SQRT_SUB:		! ニュートン法10回, 初期値($f1: 1.0)	x: $f0, y: $f1
+	lfh	$f4, 16384	! $f4 定数 2.0
+	lfl	$f4, 0
+.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
 	mul.s	$f2, $f1, $f1
 	sub.s	$f2, $f2, $f0		! $f2 = y */ y -. x
-	lfh	$f3, 16384
-	lfl	$f3, 0
-	mul.s	$f3, $f3, $f1		! $f3 = 2.0 *. y
+	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
 	div.s	$f2, $f2, $f3		! $f2 = (y */ y -. x) /. (2.0 *. y)
 	sub.s	$f1, $f1, $f2
 	addi	$r2, $r2, -1
@@ -216,5 +216,92 @@
 	fmove	$f0, $f1
 	jr	$r31
 
-	
-	
+! * sqrt(中でfinvを呼び出すversion)
+!.min_caml_sqrt:		! 引数 $f0
+!	addi	$r2, $r0, 10
+!	lfh	$f1, 16256	! $f1 初期値 1.0
+!	lfl	$f1, 0
+!	lfh	$f4, 16384	! $f4 定数 2.0
+!	lfl	$f4, 0
+!.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
+!	mul.s	$f2, $f1, $f1
+!	sub.s	$f2, $f2, $f0		! $f2 = y *. y -. x
+!	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
+!	div.s	$f2, $f2, $f3		! $f2 = (y *. y -. x) /. (2.0 *. y)
+!	sw	$r31, -4($r29)	
+!	jal	.min_caml_myfinv_SQ	! f3 = 1.0 / f3
+!	lw	$r31, -4($r29)	
+!	mul.s	$f2, $f2, $f3			! 逆数とって掛け算
+!	sub.s	$f1, $f1, $f2
+!	addi	$r2, $r2, -1
+!	bne	$r2, $r0, .SQRT_SUB	! ループ
+!	fmove	$f0, $f1
+!	jr	$r31
+
+! * finv
+!# (Int32.to_int (Int32.bits_of_float 0.001)) land 0x0000ffff
+!-  int = 4719
+!# (Int32.to_int (Int32.bits_of_float 0.001)) lsr 16
+!-  int = 14979
+! 0x7f800000 ::Int32  ==>>   2139095040	(指数部)	
+! 0x007fffff ::Int32  ==>>   8388607	(仮数部)
+.min_caml_myfinv:		! 引数 $f0(a)	使うレジスタ(r3, f11 〜 f15)
+	lui	$r5, 32640
+	ori	$r5, $r5, 0
+	lui	$r6, 127		! r5 = 0x007fffff
+	ori	$r6, $r6, 65535
+	lfh	$f11, 16384	! $f11 = 2.0 定数
+	lfl	$f11, 0		
+	lfh	$f12, ???	! $f12 初期値x 0.0001
+	lfl	$f12, ???
+	addi	$r3, $r0, 15	! 反復回数
+	lfh	$f15, 0		! f15 = 0.0
+	lfl	$f15, 0
+	c.le.s	$f0, $f15		! if (argv[0] <= 0.0)
+	bclt	.FINV_NEGATIVE		! 負だったらnegativeにジャンプ
+	swcl	$f0, 0($r30)
+	lw	$r4, 0($r30)		! f0 を r4 に変換
+.FINV_SUB:		
+	mul.s	$f13, $f11, $f12	! $f2 = 2.0 * x		($f11 * $f14)
+	mul.s	$f14, $f12, $f12	! $f3 = x * x		($f12 * $f12)
+	mul.s	$f14, $f14, $f0		! $f3 = x * x * a	($f14 * $f0)
+	sub.s	$f12, $f13, $f14	! $f1 = 2.0 * x - x * x * a
+	addi	$r3, $r3, -1
+	bne	$r3, $r0, .FINV_SUB
+	fmove	$f0, $f12
+	jr	$r31
+.FINV_NEGATIVE:
+	fneg	$f0, $f0
+	sw	$r31, 0($r30)
+	jal	.FINV_SUB
+	lw	$r31, 0($r30)
+	fneg	$f0, $f0
+	jr	$r31
+
+!sqrtから呼び出しやすくした	
+!.min_caml_myfinv_SQ:		! 引数 $f3(a)	使うレジスタ(r3, f11 〜 f15)
+!	lfh	$f11, 16384	! $f11 = 2.0 定数
+!	lfl	$f11, 0		
+!	lfh	$f12, 14979	! $f12 初期値x 0.0001
+!	lfl	$f12, 4719
+!	addi	$r3, $r0, 15	! 反復回数
+!	lfh	$f15, 0		! f15 = 0.0
+!	lfl	$f15, 0
+!	c.le.s	$f3, $f15		! if (argv[0] <= 0.0)
+!	bclt	.FINV_NEGATIVE_SQ		! 真だったら飛ぶ
+!.FINV_SUB_SQ:		
+!	mul.s	$f13, $f11, $f12	! $f2 = 2.0 * x		($f11 * $f14)
+!	mul.s	$f14, $f12, $f12	! $f3 = x * x		($f12 * $f12)
+!	mul.s	$f14, $f14, $f3		! $f3 = x * x * a	($f14 * $f0)
+!	sub.s	$f12, $f13, $f14	! $f1 = 2.0 * x - x * x * a
+!	addi	$r3, $r3, -1
+!	bne	$r3, $r0, .FINV_SUB_SQ
+!	fmove	$f3, $f12
+!	jr	$r31
+!.FINV_NEGATIVE_SQ:
+!	fneg	$f3, $f3
+!	sw	$r31, 0($r30)
+!	jal	.FINV_SUB_SQ
+!	lw	$r31, 0($r30)
+!	fneg	$f3, $f3
+!	jr	$r31

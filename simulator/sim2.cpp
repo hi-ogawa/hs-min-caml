@@ -46,6 +46,7 @@ int simulator(){
 	print = false;
 	stepx(num);
 	showRegs();
+	showStat();
       }
       else if(command == "cont"){
 	print = false;
@@ -68,7 +69,7 @@ int simulator(){
   }
   // showRegs();
   // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
-  // cerr <<"inst_num: "<< inst_num << endl;
+  cerr <<"inst_num: "<< inst_num << endl;
   // for(int i=0; i < (int)pcStatistics.size(); i++){
   //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
   // }
@@ -77,6 +78,14 @@ int simulator(){
   // 	cerr << "ram[" << i*4 << "]: " << ram[i] << endl;
   // }
   return 0;
+}
+void showStat(void){
+  cerr << "pcStatistics" << endl;
+  for(int i=0; i < (int)pcStatistics.size(); i++){
+    if(addrToLabel.find(i) != addrToLabel.end())
+      cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
+    cerr << "pc " << i << " : " << pcStatistics[i] << endl;
+  }
 }
 
 void showRegs(void){
