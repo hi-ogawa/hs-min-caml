@@ -6,6 +6,7 @@
 #include<map>
 #include<vector>
 #include<set>
+#include<cmath>
 
 #define MAX_LINE_SIZE 512
 #define INTREG_NUM 32
@@ -60,10 +61,45 @@ typedef union{
 // shift系はR形式だから注意
 
 #define formFrFrFr "%s $f%d, $f%d, $f%d"	// add.s, sub.s, mul.s, div.s
-#define formFrFr "%s $f%d, $f%d"	// fmove(F), fneg(F), c.eq.s(F), c.le.s(F)
+#define formFrFr "%s $f%d, $f%d"	// fmove(F), fneg(F), c.eq.s(F), c.le.s(F),sqrt
 #define formFrI	"%s $f%d, %d"	// lfl(F), lfh(F)
 #define formFrIR "%s $f%d, %d($r%d)"	//lwcl, xwcl (float関係)
 
+#define INSTNUM 34
+#define HALT	0
+#define AND	1
+#define ADDU	2
+#define SUBU	3
+#define SLT	4
+#define LW	5
+#define SW	6
+#define BEQ	7
+#define BNE	8
+#define ADDI	9	
+#define ORI	10	
+#define SLL	11	
+#define SRA	12	
+#define LUI	13	
+#define JR	14	
+#define INPUT	15	
+#define OUTPUT	16	
+#define J	17	
+#define JAL	18	
+#define ADDS	19	
+#define SUBS	20	
+#define MULS	21	
+#define DIVS	22	
+#define FMOVE	23	
+#define FNEG	24	
+#define CEQS	25	
+#define CLES	26	
+#define LFL	27	
+#define LFH	28	
+#define LWCL	29	
+#define SWCL	30	
+#define BCLT	31	
+#define BCLF	32	
+#define SQRT	33
 
 void transeInstructions(void);
 

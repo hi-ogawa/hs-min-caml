@@ -129,6 +129,7 @@ and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regal
   | Ld(x, y') -> (Ans(Ld(find x Type.Int regenv, find' y' regenv)), regenv)
   | St(x, y, z') -> (Ans(St(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | FMov(x) -> (Ans(FMov(find x Type.Float regenv)), regenv)
+  (* | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv) *)
   | FNeg(x) -> (Ans(FNeg(find x Type.Float regenv)), regenv)
   | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)
@@ -162,19 +163,19 @@ and g'_if dest cont regenv exp constr e1 e2 = (* ifのレジスタ割り当て (caml2html
   (List.fold_left
      (fun e x ->
        if x = fst dest || not (M.mem x regenv) || M.mem x regenv' then e else
-       seq(Save(M.find x regenv, x), e)) (* そうでない変数は分岐直前にセーブ *)
+       seq(Save(M.find x regenv, x), e)) (* そうでない変数は分岐直前にセーブ  -- 絶対に見つかる(上の条件not mem)*)
      (Ans(constr e1' e2'))
      (fv cont),
    regenv')
 and g'_call dest cont regenv exp constr ys zs = (* 関数呼び出しのレジスタ割り当て (caml2html: regalloc_call) *)
   (List.fold_left
      (fun e x ->
-       if x = fst dest || not (M.mem x regenv) then e else
+       if x = fst dest || not (M.mem x regenv) then e else	(* fvが関数の返り値である、または、既にレジスタから退避されている(not M.mem)ときはスルー *)
        seq(Save(M.find x regenv, x), e))
      (Ans(constr
 	    (List.map (fun y -> find y Type.Int regenv) ys)
 	    (List.map (fun z -> find z Type.Float regenv) zs)))
-     (fv cont),
+     (fv cont),		(* contのfreevarつまり関数呼び出し以降に必要とする変数は関数呼び出し前に退避(SAVE)しておく *)
    M.empty)
 
 let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)

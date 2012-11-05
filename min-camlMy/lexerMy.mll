@@ -83,6 +83,12 @@ rule token = parse
     { IN }
 | "rec"
     { REC }
+(* | "sqrt" *)
+(*     { SQRT } *)
+(* | "print_char" *)
+(*     { OUTPUT }	 *)
+(* | "input_char" *)
+(*     { INPUT } *)
 | ','
     { COMMA }
 | '_'

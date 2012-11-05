@@ -9,6 +9,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | Sub of Id.t * Id.t
   | SLL of Id.t * Id.t	(* どうせ即値最適化でimmediateになるっぽい *)
   | SRA of Id.t * Id.t	(* 同上 *)
+  (* | Sqrt of Id.t *)
   | FNeg of Id.t
   | FAdd of Id.t * Id.t
   | FSub of Id.t * Id.t
@@ -30,7 +31,7 @@ and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
-  | Neg(x) | FNeg(x) -> S.singleton x
+  | Neg(x) | FNeg(x) (* | Sqrt(x) *) -> S.singleton x
   | Add(x, y) | Sub(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | SLL(x, y) | SRA(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -78,6 +79,9 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
       insert_let (g env e1)
 	(fun x -> insert_let (g env e2)
 	    (fun y -> SRA(x, y), Type.Int))
+  (* | Syntax.Sqrt(e) -> *)
+  (*     insert_let (g env e) *)
+  (* 	(fun x -> Sqrt(x), Type.Float) *)
   | Syntax.FNeg(e) ->
       insert_let (g env e)
 	(fun x -> FNeg(x), Type.Float)

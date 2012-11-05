@@ -8,6 +8,7 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | Sub of Id.t * Id.t
   | SLL of Id.t * Id.t
   | SRA of Id.t * Id.t
+  (* | Sqrt of Id.t *)
   | FNeg of Id.t
   | FAdd of Id.t * Id.t
   | FSub of Id.t * Id.t
@@ -33,7 +34,7 @@ type prog = Prog of fundef list * t
 
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
-  | Neg(x) | FNeg(x) -> S.singleton x
+  | Neg(x) | FNeg(x) (* | Sqrt(x) *) -> S.singleton x
   | Add(x, y) | Sub(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | SLL(x, y) | SRA(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2)| IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -57,6 +58,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.Sub(x, y) -> Sub(x, y)
   | KNormal.SLL(x, y) -> SLL(x, y)
   | KNormal.SRA(x, y) -> SRA(x, y)
+  (* | KNormal.Sqrt(x) -> Sqrt(x) *)
   | KNormal.FNeg(x) -> FNeg(x)
   | KNormal.FAdd(x, y) -> FAdd(x, y)
   | KNormal.FSub(x, y) -> FSub(x, y)
@@ -95,7 +97,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
       toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; (* トップレベル関数を追加 *)
       let e2' = g env' known' e2 in
       (* xが(ラベルではなく)変数としてe2'に出現するか (関数を値として返すか、もしくは、完全に引数を全部適用するか、のどっちか)*)
-      if S.mem x (fv e2')
+      if S.mem x (fv e2')	(* appcls以外でxがfvになる可能性はあるのか?? *)
       then (* 関数としての値 *)
 	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2')
       else (* 引数が適用されているとき *)

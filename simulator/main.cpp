@@ -285,6 +285,16 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
 
   // そのまんま命令(擬似命令でない命令)
   // formRRR
+  else if(instName == "and"){
+    if(sscanf(buffer, formRRR, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
+      i1.ty = R_TYPE; i1.name = string("and");
+      i1.op = 0x0; i1.fu = 0x24;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, and" << endl;
+    error = true;
+  }
   else if(instName == "addu"){
     if(sscanf(buffer, formRRR, dummy, &(i1.rd), &(i1.rs), &(i1.rt)) == 4){
       i1.ty = R_TYPE; i1.name = string("addu");
@@ -607,6 +617,15 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     if(sscanf(buffer, formFrI, dummy, &(i1.rt), &(i1.im)) == 3){
       i1.ty = FI_TYPE; i1.name = instName;
       i1.op = 0x32;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, " << instName << endl;
+  }
+  else if(instName == "sqrt"){
+    if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
+      i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x34;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }

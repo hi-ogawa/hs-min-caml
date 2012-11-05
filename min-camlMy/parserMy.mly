@@ -66,6 +66,9 @@ let sra_of_div e1 e2 pos =
 %token SEMICOLON
 %token LPAREN
 %token RPAREN
+/* %token SQRT */
+%token OUTPUT
+%token INPUT
 %token EOF
 
 /* 優先順位とassociativityの定義（低い方から高い方へ） (caml2html: parser_prior) */
@@ -78,7 +81,7 @@ let sra_of_div e1 e2 pos =
 %left PLUS MINUS PLUS_DOT MINUS_DOT
 %left AST SLASH AST_DOT SLASH_DOT
 %right prec_unary_minus
-%left prec_app
+%left prec_app /* SQRT */ OUTPUT INPUT
 %left DOT
 
 /* 開始記号の定義 */
@@ -128,7 +131,7 @@ exp: /* 一般の式 (caml2html: parser_exp) */
 	  then sra_of_div $1 $3 (rhs_start_pos 2)
 	  else App' ((Var' "div"), [$1; $3], rhs_start_pos 2)
 	}
-| exp EQUAL exp				/* ocamlの比較諸々が多相だった件 */
+| exp EQUAL exp				/* ocamlの比較が多相だった */
     { Eq'($1, $3, rhs_start_pos 2) }
 | exp LESS_GREATER exp
     { Not'(Eq'($1, $3, rhs_start_pos 2), rhs_start_pos 2) }
@@ -160,6 +163,16 @@ exp: /* 一般の式 (caml2html: parser_exp) */
 | LET REC fundef IN exp
     %prec prec_let
     { LetRec'($3, $5, rhs_start_pos 1) }
+/*
+| OUTPUT exp
+   { Output'($2, rhs_start_pos 1)}
+| INPUT exp
+     { Input'(rhs_start_pos 1)}
+*/
+/*
+| SQRT exp
+    { Sqrt'($2, rhs_start_pos 1) }
+*/
 | exp actual_args
     %prec prec_app
     { App'($1, $2, rhs_start_pos 1) }	/* 部分適応的なことが起こり得る(クロージャ) */

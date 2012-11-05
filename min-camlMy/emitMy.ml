@@ -79,9 +79,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(_), St(x, y, C(i)) -> Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x i y
   | NonTail(x), FMov(y) when x = y -> ()
   | NonTail(x), FMov(y) ->
-      Printf.fprintf oc "\tfmove\t%s, %s\n" x y;	(* 移動命令欲しい *)
+      Printf.fprintf oc "\tfmove\t%s, %s\n" x y;
+  (* | NonTail(x), Sqrt(y) -> *)
+  (*     Printf.fprintf oc "\tsqrt\t%s, %s\n" x y; *)
   | NonTail(x), FNeg(y) ->
-      Printf.fprintf oc "\tfneg\t%s, %s\n" x y; (* 符号反転も欲しい *)
+      Printf.fprintf oc "\tfneg\t%s, %s\n" x y;
   | NonTail(x), FAdd(y, z) -> Printf.fprintf oc "\tadd.s\t%s, %s, %s\n" x y z
   | NonTail(x), FSub(y, z) -> Printf.fprintf oc "\tsub.s\t%s, %s, %s\n" x y z
   | NonTail(x), FMul(y, z) -> Printf.fprintf oc "\tmul.s\t%s, %s, %s\n" x y z
@@ -112,7 +114,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | SLL _ | SRA _ | Ld _ as exp) ->
       g' oc (NonTail(regs.(0)), exp);	(*返り値Int*)
       Printf.fprintf oc "\tjr\t$r31\n"
-  | Tail, (Setf _ | FMov _ | FNeg _ | FAdd _ | FSub _ | FMul _ | FDiv _ | LdF _  as exp) ->
+  | Tail, (Setf _ | FMov _ | FNeg _ (* | Sqrt _ *)| FAdd _ | FSub _ | FMul _ | FDiv _ | LdF _  as exp) ->
       g' oc (NonTail(fregs.(0)), exp);	(*返り値Float*)
       Printf.fprintf oc "\tjr\t$r31\n"
   | Tail, (Restore(x) as exp) ->

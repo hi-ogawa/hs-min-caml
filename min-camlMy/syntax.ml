@@ -7,6 +7,7 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Float of float
   | Not of t
   | Neg of t
+  (* | Sqrt of t *)
   | Add of t * t
   | Sub of t * t
   | SLL of t * t	(* 第二オペランドは即値のみ *)
@@ -28,6 +29,8 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Array of t * t
   | Get of t * t
   | Put of t * t * t
+  (* | Output of t *)
+  (* | Input *)
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
 
@@ -38,6 +41,7 @@ type t' = (* positionを記憶 *)
   | Float' of float
   | Not' of t' * position
   | Neg' of t' * position
+  (* | Sqrt' of t' * position *)
   | Add' of t' * t' * position
   | Sub' of t' * t' * position
   | SLL' of t' * t' * position
@@ -59,4 +63,6 @@ type t' = (* positionを記憶 *)
   | Array' of t' * t' * position
   | Get' of t' * t' * position
   | Put' of t' * t' * t' * position
+  (* | Output' of t' * position *)
+  (* | Input' of position *)
 and fundef' = { name' : Id.t * Type.t; args' : (Id.t * Type.t) list; body' : t' }

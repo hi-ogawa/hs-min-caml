@@ -60,12 +60,6 @@ for_lib:
 
 min-rt: 
 	./sh/do_test.sh -c ./test/min-rt/min-rt-new
-	../simulator/sim2 ./test/min-rt/min-rt-new.s -c < ./test/min-rt/sld/contest.sld | tee ./test/min-rt/sld/contest.ppm
-
-pika:
-	../simulator/sim2 ./test/min-rt/min-rt-new.s < ./test/min-rt/sld/pika.sld | tee ./test/min-rt/sld/pika.ppm
-
-test_clean:
-	rm -rf ./test/*.s ./test/*.b ./test/*__.ml
+	../simulator/sim2 ./test/min-rt/min-rt-new.s -c < ./test/min-rt/sld/contest.sld > ./test/min-rt/sld/contest.ppm
 
 include OCamlMakefile

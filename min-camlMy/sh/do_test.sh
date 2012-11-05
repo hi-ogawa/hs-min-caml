@@ -20,7 +20,7 @@ function compile(){
     FILE=$1
     echo "** COMPILING ${FILE} **" >&2
     cat ${LIB_ML} "${FILE}.ml" > "${FILE}__.ml"
-    ${MINCAMLOPT} "${FILE}__"
+    ${MINCAMLOPT} -inline 50 "${FILE}__"
     cat "${FILE}__.s" ${LIB_ASM} > "${FILE}.s"
     rm -rf "${FILE}__.ml" "${FILE}__.s"
 }

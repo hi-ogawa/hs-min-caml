@@ -14,6 +14,8 @@ bool halt = false;
 bool print = false;
 
 vector<int> pcStatistics;
+ULLI instStatistics[INSTNUM];
+
 extern bool cont;
 extern FILE* inputFile;
 extern vector<inst> insts;
@@ -69,6 +71,8 @@ int simulator(){
   }
   // showRegs();
   // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
+
+  showStat();
   cerr <<"inst_num: "<< inst_num << endl;
   // for(int i=0; i < (int)pcStatistics.size(); i++){
   //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
@@ -79,12 +83,19 @@ int simulator(){
   // }
   return 0;
 }
+
 void showStat(void){
-  cerr << "pcStatistics" << endl;
+  cerr << "<< pcStatistics >>" << endl;
   for(int i=0; i < (int)pcStatistics.size(); i++){
     if(addrToLabel.find(i) != addrToLabel.end())
       cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
     cerr << "pc " << i << " : " << pcStatistics[i] << endl;
+  }
+  cerr << endl;
+  cerr << "<< instStatistics >>" << endl;
+  for(int i=0; i < INSTNUM; i++){
+    fprintf(stderr, "%2d: %10llu\n", i, instStatistics[i]);
+    //    cerr << i << ": " << instStatistics[i] << endl;
   }
 }
 
@@ -120,9 +131,9 @@ int stepx(ULLI num){
 void execInst(inst nowi){
 
   if(ireg[29] <= min_sp) min_sp = ireg[29];  
-  if(inst_num % 10000000 == 0){
-    cerr << "inst_num: " << inst_num << ", heap: " << ireg[30] << endl;
-  }
+  // if(inst_num % 10000000 == 0){
+  //   cerr << "inst_num: " << inst_num << ", heap: " << ireg[30] << endl;
+  // }
 
   if(print){
     if(addrToLabel.find(pc) != addrToLabel.end())
@@ -140,25 +151,29 @@ void execInst(inst nowi){
 
 
   if(nowi.op == 0x4 && nowi.rs == 0 && nowi.rt == 0 && nowi.im==-1){//nowi.name == "halt" 一番最初に持ってくる(beqとopcodeかぶってるから)
-    //    cerr << "halt" << endl;
+    instStatistics[HALT] ++;
     halt = true;
   }
+  else if(nowi.op == 0x0 && nowi.fu == 0x24){	//nowi.name == "and"
+    instStatistics[AND] ++;
+    ireg[nowi.rd] = ireg[nowi.rs] & ireg[nowi.rt];
+  }
   else if(nowi.op == 0x0 && nowi.fu == 0x21){	//nowi.name == "addu"
-    //    cerr << "addu" << endl;
+    instStatistics[ADDU] ++;
     ireg[nowi.rd] = ireg[nowi.rs] + ireg[nowi.rt];
   }
   else if(nowi.op == 0x0 && nowi.fu == 0x23){	//nowi.name == "subu"
-  //  cerr << "subu" << endl;
+    instStatistics[SUBU] ++;
     ireg[nowi.rd] = ireg[nowi.rs] - ireg[nowi.rt];
   }
   else if(nowi.op == 0x0 && nowi.fu == 0x2a){//nowi.name == "slt"
-  //  cerr << "slt" << endl;
+    instStatistics[SLT] ++;
     if(ireg[nowi.rs] < ireg[nowi.rt]) ireg[nowi.rd] = 1;
     else ireg[nowi.rd] = 0;
   }
 
   else if(nowi.op == 0x23){//nowi.name == "lw"
- //   cerr << "lw" << endl;
+    instStatistics[LW] ++;
     int addr = ireg[nowi.rs] + nowi.im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
       ireg[nowi.rt] = ram[addr/4];
@@ -171,7 +186,7 @@ void execInst(inst nowi){
     }
   }
   else if(nowi.op == 0x2b){	//nowi.name == "sw"
-  //  cerr << "sw" << endl;
+    instStatistics[SW] ++;
     int addr = ireg[nowi.rs] + nowi.im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
       ram[addr/4] = ireg[nowi.rt];
@@ -185,42 +200,42 @@ void execInst(inst nowi){
   }
 
   else if(nowi.op == 0x04){//nowi.name == "beq"
-  //  cerr << "beq" << endl;
+    instStatistics[BEQ] ++;
     if(ireg[nowi.rt] == ireg[nowi.rs]) pc += nowi.im;
   }
   else if(nowi.op == 0x05){//nowi.name == "bne"
-  //  cerr << "bne" << endl;
+    instStatistics[BNE] ++;
     if(ireg[nowi.rt] != ireg[nowi.rs]) pc += nowi.im;
   }
 
   else if(nowi.op == 0x8){//nowi.name == "addi"
-  //  cerr << "addi" << endl;
+    instStatistics[ADDI] ++;
     ireg[nowi.rt] = ireg[nowi.rs] + nowi.im;
   }
   else if(nowi.op == 0x0d){//nowi.name == "ori"
-  //  cerr << "ori" << endl;
+    instStatistics[ORI] ++;
     ireg[nowi.rt] = ireg[nowi.rs] | nowi.im;
   }
   else if(nowi.op == 0x00 && nowi.fu == 0x00){	//nowi.name == "sll"
-  //  cerr << "sll" << endl;
+    instStatistics[SLL] ++;
     ireg[nowi.rd] = ireg[nowi.rs] << nowi.sh;
   }
   else if(nowi.op == 0x00 && nowi.fu == 0x03){	//nowi.name == "sra"
-  //  cerr << "sra" << endl;
+    instStatistics[SRA] ++;
     ireg[nowi.rd] = ireg[nowi.rs] >> nowi.sh;
   }
 
   else if(nowi.op == 0x0f){	//nowi.name == "lui"
-  //  cerr << "lui" << endl;
+    instStatistics[LUI] ++;
     ireg[nowi.rt] = (nowi.im * 0x10000) & 0xFFFF0000;
   }
 
   else if(nowi.op == 0x00 && nowi.fu == 0x08){//nowi.name == "jr"
-  //  cerr << "jr" << endl;
+    instStatistics[JR] ++;
     pc = ireg[nowi.rs];
   }
   else if(nowi.op == 0x18 && nowi.fu == 0x00){//nowi.name == "input"
-  //  cerr << "input" << endl;
+    instStatistics[INPUT] ++;
     char c;
     if(inputFile != NULL)
       c = getc(inputFile);
@@ -229,55 +244,55 @@ void execInst(inst nowi){
     ireg[nowi.rs] = (int)c;
   }
   else if(nowi.op == 0x18 && nowi.fu == 0x01){//nowi.name == "output"
-  //  cerr << "output" << endl;
+    instStatistics[OUTPUT] ++;
     cout << (char)(ireg[nowi.rs] & 0x000000FF);
   }
 
   else if(nowi.op == 0x02){	//nowi.name == "j"
-  //  cerr << "j" << endl;
+    instStatistics[J] ++;
     pc = nowi.im;
   }
   else if(nowi.op == 0x03){	//nowi.name == "jal"
-  //  cerr << "jal" << endl;
+    instStatistics[JAL] ++;
     ireg[31] = pc;
     pc = nowi.im;
   }  
 
   // float関係
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x0){//nowi.name == "add.s"
-  //  cerr << "add.s" << endl;
+    instStatistics[ADDS] ++;
     freg[nowi.rd] = freg[nowi.rs] + freg[nowi.rt];
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x1){//nowi.name == "sub.s"
-  //  cerr << "sub.s" << endl;
+    instStatistics[SUBS] ++;
     freg[nowi.rd] = freg[nowi.rs] - freg[nowi.rt];
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x2){//nowi.name == "mul.s"
-  //  cerr << "mul.s" << endl;
+    instStatistics[MULS] ++;
     freg[nowi.rd] = freg[nowi.rs] * freg[nowi.rt];
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3){//nowi.name == "div.s"
-  //  cerr << "div.s" << endl;
+    instStatistics[DIVS] ++;
     freg[nowi.rd] = freg[nowi.rs] / freg[nowi.rt];
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x4){//nowi.name == "fmove"
-  //  cerr << "fmove" << endl;
+    instStatistics[FMOVE] ++;
     freg[nowi.rd] = freg[nowi.rs];
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x5){//nowi.name == "fneg"
-  //  cerr << "fneg" << endl;
+    instStatistics[FNEG] ++;
     freg[nowi.rd] = - freg[nowi.rs];
   }
 
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x32){//nowi.name== "c.eq.s"
-  //  cerr << "c.eq.s" << endl;
+    instStatistics[CEQS] ++;
     if(freg[nowi.rs] == freg[nowi.rt])
       fpcond = 1;
     else
       fpcond = 0;
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3e){//nowi.name== "c.le.s"
-  //  cerr << "c.le.s" << endl;
+    instStatistics[CLES] ++;
     if(freg[nowi.rs] <= freg[nowi.rt])
       fpcond = 1;
     else
@@ -285,21 +300,21 @@ void execInst(inst nowi){
   }
 
   else if(nowi.op == 0x30){//nowi.name == "lfl"){	// 上位16bitは保存する
-  //  cerr << "lfl" << endl;
+    instStatistics[LFL] ++;
     conv c1, c2;
     c1.f = freg[nowi.rt];
     c2.i = (c1.i & 0xffff0000) | (nowi.im & 0xffff);
     freg[nowi.rt] = c2.f;
   }
   else if(nowi.op == 0x32){//nowi.name == "lfh"
-  //  cerr << "lfh" << endl;
+    instStatistics[LFH] ++;
     conv c1;
     c1.i = (nowi.im << 16);
     freg[nowi.rt] = c1.f;
   }
 
   else if(nowi.op == 0x31){//nowi.name == "lwcl"
-  //  cerr << "lwcl" << endl;
+    instStatistics[LWCL] ++;
     int addr = ireg[nowi.rs] + nowi.im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
       conv c1;
@@ -313,7 +328,7 @@ void execInst(inst nowi){
     }
   }
   else if(nowi.op == 0x39){//nowi.name == "swcl"
-  //  cerr << "swcl" << endl;
+    instStatistics[SWCL] ++;
     int addr = ireg[nowi.rs] + nowi.im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
       conv c1;
@@ -327,18 +342,21 @@ void execInst(inst nowi){
     }
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x1){//nowi.name == "bclt"
-  //  cerr << "bclt" << endl;
+    instStatistics[BCLT] ++;
     if(fpcond == 1)
       pc += nowi.im;
   }
   else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x0){//nowi.name == "bclf"
-  //  cerr << "bclf" << endl;
+    instStatistics[BCLF] ++;
     if(fpcond == 0)
       pc += nowi.im;
   }
+  else if(nowi.op == 0x34){
+    instStatistics[SQRT] ++;
+    freg[nowi.rd] = sqrt(freg[nowi.rs]);
+  }
 
   else{
-  //  cerr << "not found" << endl;
     cerr << "error: not defined instructions" << endl;
   }
 
