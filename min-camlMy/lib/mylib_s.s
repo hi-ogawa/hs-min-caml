@@ -198,100 +198,98 @@
 .min_caml_truncate:
 	j	.min_caml_int_of_float
 
-! * sqrt (とりあえずこっちは使わない)
-!.min_caml_sqrt:		! 引数 $f0, (r2, f1, f2, f3, f4)
-!	addi	$r2, $r0, 10
-!	lfh	$f1, 16256	! $f1 初期値 1.0
-!	lfl	$f1, 0
-!	lfh	$f4, 16384	! $f4 定数 2.0
-!	lfl	$f4, 0
-!.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
-!	mul.s	$f2, $f1, $f1
-!	sub.s	$f2, $f2, $f0		! $f2 = y */ y -. x
-!	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
-!	div.s	$f2, $f2, $f3		! $f2 = (y */ y -. x) /. (2.0 *. y)
-!	
-!!	sw	$r2, -4($r29)
-!!	swcl	$f0, -8($r29)
-!!	swcl	$f1, -12($r29)
-!!	swcl	$f2, -16($r29)
-!!	swcl	$f3, -20($r29)
-!!	swcl	$f4, -24($r29)
-!!	sw	$r31, -28($r29)
-!!	addi	$r29, $r29, -28
-!!	fmove	$f0, $f3
-!!	jal	.min_caml_myfinv	! $f3 = 1.0 /. $f3
-!!	fmove	$f3, $f0
-!!	addi	$r29, $r29, 28
-!!	lw	$r31, -28($r29)
-!!	lwcl	$f4, -24($r29)
-!!	lwcl	$f3, -20($r29)
-!!	lwcl	$f2, -16($r29)
-!!	lwcl	$f1, -12($r29)
-!!	lwcl	$f0, -8($r29)
-!!	lw	$r2, -4($r29)
-!!	mul.s	$f2, $f2, $f3
-!	
-!	sub.s	$f1, $f1, $f2
-!	addi	$r2, $r2, -1
-!	bne	$r2, $r0, .SQRT_SUB	! ループ
-!	fmove	$f0, $f1
-!	jr	$r31
+! * sqrt
+.min_caml_sqrt:		! 引数 $f0, (r2, f1, f2, f3, f4)
+	addi	$r2, $r0, 10
+	lfh	$f1, 16256	! $f1 初期値 1.0
+	lfl	$f1, 0
+	lfh	$f4, 16384	! $f4 定数 2.0
+	lfl	$f4, 0
+.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
+	mul.s	$f2, $f1, $f1
+	sub.s	$f2, $f2, $f0		! $f2 = y */ y -. x
+	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
+	div.s	$f2, $f2, $f3		! $f2 = (y */ y -. x) /. (2.0 *. y)
+	
+!	sw	$r2, -4($r29)
+!	swcl	$f0, -8($r29)
+!	swcl	$f1, -12($r29)
+!	swcl	$f2, -16($r29)
+!	swcl	$f4, -24($r29)
+!	sw	$r31, -28($r29)
+!	addi	$r29, $r29, -28
+!	fmove	$f0, $f3
+!	jal	.min_caml_myfinv	! $f3 = 1.0 /. $f3
+!	fmove	$f3, $f0
+!	addi	$r29, $r29, 28
+!	lw	$r31, -28($r29)
+!	lwcl	$f4, -24($r29)
+!	lwcl	$f2, -16($r29)
+!	lwcl	$f1, -12($r29)
+!	lwcl	$f0, -8($r29)
+!	lw	$r2, -4($r29)
+!	mul.s	$f2, $f2, $f3
+	
+	sub.s	$f1, $f1, $f2
+	addi	$r2, $r2, -1
+	bne	$r2, $r0, .SQRT_SUB	! ループ
+	fmove	$f0, $f1
+	jr	$r31
 
 ! * finv
-.min_caml_myfinv:		! 引数 $f0(a)
-	lui	$r5, 32640		! r5 = 0x7f800000 (指数マスク)
-	ori	$r5, $r5, 0
-	lui	$r6, 127		! r6 = 0x007fffff (仮数マスク)
-	ori	$r6, $r6, 65535
-	lui	$r7, 16256		! r7 = (float 1.0 のbit表示)
-	ori	$r7, $r7, 0
-	lfh	$f11, 16384		! $f11 = 2.0 定数
-	lfl	$f11, 0		
-	lfh	$f12, 16153		! $f12 初期値x =  0.6
-	lfl	$f12, 39322
-	addi	$r3, $r0, 15		! 反復回数
-	lfh	$f15, 0			! f15 = 0.0
-	lfl	$f15, 0
-	c.le.s	$f0, $f15		! if (argv[0] <= 0.0)
-	bclt	.FINV_NEGATIVE		! 負だったらnegativeにジャンプ
-.FINV_POSITIVE:
-	swcl	$f0, 0($r30)
-	lw	$r4, 0($r30)		! f0 を r4 に変換
-	
-	and	$r8, $r4, $r5		! expは別個に計算(r8(exp of r4) => f8)
-	sra	$r8, $r8, 23
-	subu	$r8, $r0, $r8
-	addi	$r8, $r8, 254
-	sll	$r8, $r8, 23
-	sw	$r8, 0($r30)
-	lwcl	$f8, 0($r30)
-	
-	and	$r9, $r4, $r6		! fracも別個に計算(r9(frac of r4) => f0)
-	addu	$r10, $r7, $r9		! r10(1.0〜2.0のfloat)
-	sw	$r10, 0($r30)
-	lwcl	$f0, 0($r30)		! f0 (1.0〜2.0のfloat)
-	sw	$r31, -4($r29)
-	jal	.FINV_SUB		! ニュートン法
-	lw	$r31, -4($r29)
-
-	mul.s	$f0, $f0, $f8		! exp(inv) * frac(inv)
-	jr	$r31
-.FINV_SUB:				! 1.0〜2.0 ==> 0.0〜1.0	
-	mul.s	$f13, $f11, $f12	! $f2 = 2.0 * x		($f11 * $f14)
-	mul.s	$f14, $f12, $f12	! $f3 = x * x		($f12 * $f12)
-	mul.s	$f14, $f14, $f0		! $f3 = x * x * a	($f14 * $f0)
-	sub.s	$f12, $f13, $f14	! $f1 = 2.0 * x - x * x * a
-	addi	$r3, $r3, -1
-	bne	$r3, $r0, .FINV_SUB
-	fmove	$f0, $f12
-	jr	$r31
-.FINV_NEGATIVE:
-	fneg	$f0, $f0
-	sw	$r31, -4($r29)
-	addi	$r29, $r29, -4
-	jal	.FINV_POSITIVE
-	addi	$r29, $r29, 4
-	lw	$r31, -4($r29)
-	fneg	$f0, $f0
-	jr	$r31
+!.min_caml_myfinv:		! 引数 $f0(a)
+!	lui	$r5, 32640		! r5 = 0x7f800000 (指数マスク)
+!	ori	$r5, $r5, 0
+!	lui	$r6, 127		! r6 = 0x007fffff (仮数マスク)
+!	ori	$r6, $r6, 65535
+!	lui	$r7, 16256		! r7 = (float 1.0 のbit表示)
+!	ori	$r7, $r7, 0
+!	lfh	$f11, 16384		! $f11 = 2.0 定数
+!	lfl	$f11, 0		
+!	lfh	$f12, 16153		! $f12 初期値x =  0.6
+!	lfl	$f12, 39322
+!	addi	$r3, $r0, 15		! 反復回数
+!	lfh	$f15, 0			! f15 = 0.0
+!	lfl	$f15, 0
+!	c.le.s	$f0, $f15		! if (argv[0] <= 0.0)
+!	bclt	.FINV_NEGATIVE		! 負だったらnegativeにジャンプ
+!.FINV_POSITIVE:
+!	swcl	$f0, 0($r30)
+!	lw	$r4, 0($r30)		! f0 を r4 に変換
+!	
+!	and	$r8, $r4, $r5		! expは別個に計算(r8(exp of r4) => f8)
+!	sra	$r8, $r8, 23
+!	subu	$r8, $r0, $r8
+!	addi	$r8, $r8, 254
+!	sll	$r8, $r8, 23
+!	sw	$r8, 0($r30)
+!	lwcl	$f8, 0($r30)
+!	
+!	and	$r9, $r4, $r6		! fracも別個に計算(r9(frac of r4) => f0)
+!	addu	$r10, $r7, $r9		! r10(1.0〜2.0のfloat)
+!	sw	$r10, 0($r30)
+!	lwcl	$f0, 0($r30)		! f0 (1.0〜2.0のfloat)
+!	sw	$r31, -4($r29)
+!	jal	.FINV_SUB		! ニュートン法
+!	lw	$r31, -4($r29)
+!
+!	mul.s	$f0, $f0, $f8		! exp(inv) * frac(inv)
+!	jr	$r31
+!.FINV_SUB:				! 1.0〜2.0 ==> 0.0〜1.0	
+!	mul.s	$f13, $f11, $f12	! $f2 = 2.0 * x		($f11 * $f14)
+!	mul.s	$f14, $f12, $f12	! $f3 = x * x		($f12 * $f12)
+!	mul.s	$f14, $f14, $f0		! $f3 = x * x * a	($f14 * $f0)
+!	sub.s	$f12, $f13, $f14	! $f1 = 2.0 * x - x * x * a
+!	addi	$r3, $r3, -1
+!	bne	$r3, $r0, .FINV_SUB
+!	fmove	$f0, $f12
+!	jr	$r31
+!.FINV_NEGATIVE:
+!	fneg	$f0, $f0
+!	sw	$r31, -4($r29)
+!	addi	$r29, $r29, -4
+!	jal	.FINV_POSITIVE
+!	addi	$r29, $r29, 4
+!	lw	$r31, -4($r29)
+!	fneg	$f0, $f0
+!	jr	$r31

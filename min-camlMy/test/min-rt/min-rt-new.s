@@ -17430,7 +17430,7 @@
 .min_caml_truncate:
 	j	.min_caml_int_of_float
 
-! * sqrt (とりあえずこっちは使わない)
+! * sqrt
 .min_caml_sqrt:		! 引数 $f0, (r2, f1, f2, f3, f4)
 	addi	$r2, $r0, 10
 	lfh	$f1, 16256	! $f1 初期値 1.0
@@ -17447,7 +17447,6 @@
 !	swcl	$f0, -8($r29)
 !	swcl	$f1, -12($r29)
 !	swcl	$f2, -16($r29)
-!	swcl	$f3, -20($r29)
 !	swcl	$f4, -24($r29)
 !	sw	$r31, -28($r29)
 !	addi	$r29, $r29, -28
@@ -17457,7 +17456,6 @@
 !	addi	$r29, $r29, 28
 !	lw	$r31, -28($r29)
 !	lwcl	$f4, -24($r29)
-!	lwcl	$f3, -20($r29)
 !	lwcl	$f2, -16($r29)
 !	lwcl	$f1, -12($r29)
 !	lwcl	$f0, -8($r29)
@@ -17469,8 +17467,8 @@
 	bne	$r2, $r0, .SQRT_SUB	! ループ
 	fmove	$f0, $f1
 	jr	$r31
-!
-!! * finv
+
+! * finv
 !.min_caml_myfinv:		! 引数 $f0(a)
 !	lui	$r5, 32640		! r5 = 0x7f800000 (指数マスク)
 !	ori	$r5, $r5, 0

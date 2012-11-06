@@ -8,3 +8,5 @@ let rec test_print i =
     ()
 in
 test_print 1.0
+
+(* print_int (int_of_float (sqrt 16.0)) *)
