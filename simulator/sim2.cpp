@@ -73,7 +73,7 @@ int simulator(){
   // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
 
   showStat();
-  cerr <<"inst_num: "<< inst_num << endl;
+  cerr <<"ALL: "<< inst_num << endl;
   // for(int i=0; i < (int)pcStatistics.size(); i++){
   //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
   // }
@@ -85,13 +85,13 @@ int simulator(){
 }
 
 void showStat(void){
-  cerr << "<< pcStatistics >>" << endl;
-  for(int i=0; i < (int)pcStatistics.size(); i++){
-    if(addrToLabel.find(i) != addrToLabel.end())
-      cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
-    cerr << "pc " << i << " : " << pcStatistics[i] << endl;
-  }
-  cerr << endl;
+  // cerr << "<< pcStatistics >>" << endl;
+  // for(int i=0; i < (int)pcStatistics.size(); i++){
+  //   if(addrToLabel.find(i) != addrToLabel.end())
+  //     cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
+  //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
+  // }
+  // cerr << endl;
   cerr << "<< instStatistics >>" << endl;
   for(int i=0; i < INSTNUM; i++){
     fprintf(stderr, "%2d: %10llu\n", i, instStatistics[i]);
@@ -229,10 +229,10 @@ void execInst(inst nowi){
     instStatistics[LUI] ++;
     ireg[nowi.rt] = (nowi.im * 0x10000) & 0xFFFF0000;
   }
-
+  // 注意
   else if(nowi.op == 0x00 && nowi.fu == 0x08){//nowi.name == "jr"
     instStatistics[JR] ++;
-    pc = ireg[nowi.rs];
+    pc = ireg[nowi.rs] / 4;
   }
   else if(nowi.op == 0x18 && nowi.fu == 0x00){//nowi.name == "input"
     instStatistics[INPUT] ++;
@@ -254,7 +254,7 @@ void execInst(inst nowi){
   }
   else if(nowi.op == 0x03){	//nowi.name == "jal"
     instStatistics[JAL] ++;
-    ireg[31] = pc;
+    ireg[31] = pc * 4;
     pc = nowi.im;
   }  
 

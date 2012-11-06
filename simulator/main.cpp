@@ -167,10 +167,11 @@ inst label_resolve(inst pre, int now){
     }
     cerr << "error: label_resolve: notfound" <<  pre.label <<endl;
   }
+  // 注意
   else if(pre.name == "lui"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
-      pre.im = (addr) & 0xFFFF0000;
+      pre.im = (addr*4) & 0xFFFF0000;
       return pre;
     }
     cerr << "error: label_resolve: notfound" << pre.label << endl;
@@ -178,13 +179,13 @@ inst label_resolve(inst pre, int now){
   else if(pre.name == "ori"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
-      pre.im = (addr) & 0x0000FFFF;
+      pre.im = (addr*4) & 0x0000FFFF;
       return pre;
     }
     cerr << "error: label_resolve: notfound" << pre.label << endl;
   }
-  else{ error = true;}
-  cerr << "error: label_resolve: pre is not LABEL instruction > " << pre.name << endl;
+  cerr << "error: label_resolve: is not LABEL instruction > " << pre.name << endl;
+  error = true;
   return pre;
 }
 
