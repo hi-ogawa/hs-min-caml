@@ -2078,17 +2078,17 @@ in
 let rec write_rgb_element x =
   let ix = int_of_float x in
   let elem = if ix > 255 then 255 else if ix < 0 then 0 else ix in
-  (*print_int elem*)
-  print_char elem
+  print_int elem
+  (* print_char elem *)
 in
 
 let rec write_rgb _ =
    write_rgb_element rgb.(0); (* Red   *)
-   (* print_char 32; *)
+   print_char 32;
    write_rgb_element rgb.(1); (* Green *)
-   (* print_char 32; *)
+   print_char 32;
    write_rgb_element rgb.(2) (* Blue  *)
-   (* print_char 10 *)
+   print_char 10
 in
 
 (******************************************************************************
