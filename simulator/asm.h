@@ -1,4 +1,5 @@
 #include<iostream>
+#include<iomanip>
 #include<fstream>
 #include<string>
 #include<cstring>
@@ -111,9 +112,8 @@ int simulator(void);
 
 void showRegs(void);
 
-void showMems(void);
-
-void showStat(void);
+void showPcStat(void);
+void showInstStat(void);
 
 void execInst(inst);
 

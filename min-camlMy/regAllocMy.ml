@@ -129,7 +129,7 @@ and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regal
   | Ld(x, y') -> (Ans(Ld(find x Type.Int regenv, find' y' regenv)), regenv)
   | St(x, y, z') -> (Ans(St(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | FMov(x) -> (Ans(FMov(find x Type.Float regenv)), regenv)
-  (* | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv) *)
+  | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
   | FNeg(x) -> (Ans(FNeg(find x Type.Float regenv)), regenv)
   | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)

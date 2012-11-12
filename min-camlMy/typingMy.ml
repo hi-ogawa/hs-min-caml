@@ -10,7 +10,7 @@ let extenv = ref M.empty
 let get_pos = function 
   | Unit' | Bool' _  | Int' _ | Float' _ | Var' _
     -> Lexing.dummy_pos
-  | Not' (_, pos) | Neg' (_, pos) | FNeg'(_,pos) (* | Sqrt'(_,pos) *)
+  | Not' (_, pos) | Neg' (_, pos) | FNeg'(_,pos) | Sqrt'(_,pos)
   | Add' (_,_,pos) | Sub' (_,_,pos) | FAdd' (_,_,pos) | FSub' (_,_,pos) | FMul' (_,_,pos)
   | FDiv' (_,_,pos) | Eq' (_,_,pos) | LE' (_,_,pos)
   | If' (_,_,_,pos) | Let' (_,_,_,pos) | LetRec' (_,_,pos)
@@ -47,7 +47,7 @@ let rec deref_term = function
   | SRA' (e1, e2, _) -> SRA(deref_term e1, deref_term e2)
   | Eq'(e1, e2, _) -> Eq(deref_term e1, deref_term e2)
   | LE'(e1, e2, _) -> LE(deref_term e1, deref_term e2)
-  (* | Sqrt'(e, _) -> Sqrt(deref_term e) *)
+  | Sqrt'(e, _) -> Sqrt(deref_term e)
   | FNeg'(e, _) -> FNeg(deref_term e)
   | FAdd'(e1, e2, _) -> FAdd(deref_term e1, deref_term e2)
   | FSub'(e1, e2, _) -> FSub(deref_term e1, deref_term e2)
@@ -117,9 +117,9 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Neg'(e,_) ->
 	unify Type.Int (g env e);
 	Type.Int
-    (* | Sqrt'(e,_) -> *)
-    (* 	unify Type.Float (g env e); *)
-    (* 	Type.Float *)
+    | Sqrt'(e,_) ->
+    	unify Type.Float (g env e);
+    	Type.Float
     | Add'(e1, e2, _) | Sub'(e1, e2, _) | SLL'(e1, e2, _) | SRA'(e1, e2, _)-> (* 足し算（と引き算）の型推論 (caml2html: typing_add) *)
 	unify Type.Int (g env e1);
 	unify Type.Int (g env e2);
@@ -185,7 +185,9 @@ let f e =
 		       ;("float_of_int", (Type.Fun([Type.Int], Type.Float)))
 		       ;("int_of_float", (Type.Fun([Type.Float], Type.Int)))
 		       ;("truncate", (Type.Fun([Type.Float], Type.Int)))
-		       ;("sqrt", (Type.Fun ([Type.Float], Type.Float)))] M.empty;
+		       ;("sqrt", (Type.Fun ([Type.Float], Type.Float)))
+		       ;("freg_to_ireg", (Type.Fun([Type.Float], Type.Int)))
+		       ] M.empty;
   ignore (g M.empty e);
   extenv := M.map deref_typ !extenv;
   deref_term e

@@ -16,10 +16,17 @@ bool print = false;
 vector<int> pcStatistics;
 ULLI instStatistics[INSTNUM];
 
+string assemName[INSTNUM] = { "HALT","AND","ADDU","SUBU","SLT","LW","SW","BEQ","BNE"
+			    ,"ADDI","ORI","SLL","SRA","LUI","JR","INPUT","OUTPUT"
+			    ,"J","JAL","ADDS","SUBS","MULS","DIVS","FMOVE","FNEG"
+			    ,"CEQS","CLES","LFL","LFH","LWCL","SWCL","BCLT"
+			    ,"BCLF","SQRT"};
+
 extern bool cont;
 extern FILE* inputFile;
 extern vector<inst> insts;
 extern map<int,string> addrToLabel;
+extern map<string, int> labelNames;
 
 int simulator(){
   for(int i=0; i < DATA_RAM_SIZE/4; i++){	// ram初期化
@@ -48,7 +55,29 @@ int simulator(){
 	print = false;
 	stepx(num);
 	showRegs();
-	showStat();
+      }
+      else if(command == "breaki"){
+	int num; cin >> num;
+	getline(cin, command);	// 改行読み飛ばし
+
+	print = false;
+	while(pc != num){
+	  execInst(insts[pc]);
+	}
+	showRegs();
+	cerr <<"instNum: "<< inst_num << endl;
+      }
+      else if(command == "breakf"){
+	string func; cin >> func;
+	getline(cin, command);	// 改行読み飛ばし
+
+	print = false;
+	int funcPc = labelNames[func];
+	while(pc != funcPc){
+	  execInst(insts[pc]);
+	}
+	showRegs();
+	cerr <<"instNum: "<< inst_num << endl;
       }
       else if(command == "cont"){
 	print = false;
@@ -56,6 +85,12 @@ int simulator(){
 	  if(halt) break;
 	  execInst(insts[pc]);
 	}
+      }
+      else if(command == "showPcStat"){
+	showPcStat();
+      }
+      else if(command == "showInstStat"){
+	showInstStat();
       }
       else{
 	print = true;
@@ -72,30 +107,26 @@ int simulator(){
   // showRegs();
   // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
 
-  showStat();
+  //  showPcStat();
+  showInstStat();
   cerr <<"ALL: "<< inst_num << endl;
-  // for(int i=0; i < (int)pcStatistics.size(); i++){
-  //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
-  // }
-  // for(int i=0; i < ireg[30] / 4; i+=1){
-  //   if(ram[i] == 0)
-  // 	cerr << "ram[" << i*4 << "]: " << ram[i] << endl;
-  // }
   return 0;
 }
 
-void showStat(void){
-  // cerr << "<< pcStatistics >>" << endl;
-  // for(int i=0; i < (int)pcStatistics.size(); i++){
-  //   if(addrToLabel.find(i) != addrToLabel.end())
-  //     cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
-  //   cerr << "pc " << i << " : " << pcStatistics[i] << endl;
-  // }
-  // cerr << endl;
+void showPcStat(void){
+  cerr << "<< pcStatistics >>" << endl;
+  for(int i=0; i < (int)pcStatistics.size(); i++){
+    if(addrToLabel.find(i) != addrToLabel.end())
+      cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
+    cerr << "pc " << i << " : " << pcStatistics[i] << endl;
+  }
+  cerr << endl;
+}
+
+void showInstStat(void){
   cerr << "<< instStatistics >>" << endl;
   for(int i=0; i < INSTNUM; i++){
-    fprintf(stderr, "%2d: %10llu\n", i, instStatistics[i]);
-    //    cerr << i << ": " << instStatistics[i] << endl;
+    fprintf(stderr, "%6s: %10llu\n", assemName[i].c_str(), instStatistics[i]);
   }
 }
 
@@ -110,13 +141,6 @@ void showRegs(void){
   }
   cerr << endl;
 }
-
-// void showMems(void){
-//   FOR(it, mon_ram){
-//     cerr <<"M["<< (*it) <<"]: "<< ram[(*it)/4]<< ", ";
-//   }
-//   cerr << endl;
-// }
 
 int stepx(ULLI num){
   for(ULLI i=0; i<num; i++){
@@ -351,7 +375,7 @@ void execInst(inst nowi){
     if(fpcond == 0)
       pc += nowi.im;
   }
-  else if(nowi.op == 0x34){
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x6){
     instStatistics[SQRT] ++;
     freg[nowi.rd] = sqrt(freg[nowi.rs]);
   }

@@ -59,7 +59,8 @@ for_lib:
 	ocamlc -a $(FORLIB) -o mincaml_lib.cma
 
 min-rt: 
-	./sh/do_test.sh -c ./test/min-rt/min-rt-new
+	./sh/do_test.sh -c ./test/min-rt/min-rt-new -i 50
 	../simulator/sim2 ./test/min-rt/min-rt-new.s -c < ./test/min-rt/sld/contest.sld > ./test/min-rt/sld/contest.ppm
+	gnome-open ./test/min-rt/sld/contest.ppm
 
 include OCamlMakefile

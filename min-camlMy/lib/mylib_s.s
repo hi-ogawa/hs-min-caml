@@ -1,3 +1,7 @@
+.min_caml_freg_to_ireg:		! f0 => r2
+	swcl	$f0, 0($r30)
+	lw	$r2, 0($r30)
+	jr	$r31
 .min_caml_create_array:		! (引数) r2: size, r3: init elem
 	addi	$r4, $r2, 0	! r4にサイズ
 	ori	$r5, $r0, 0	! r5はindex <- sizeとの比較用に使うだけ
@@ -198,45 +202,45 @@
 .min_caml_truncate:
 	j	.min_caml_int_of_float
 
-! * sqrt
-.min_caml_sqrt:		! 引数 $f0, (r2, f1, f2, f3, f4)
-	addi	$r2, $r0, 10
-	lfh	$f1, 16256	! $f1 初期値 1.0
-	lfl	$f1, 0
-	lfh	$f4, 16384	! $f4 定数 2.0
-	lfl	$f4, 0
-.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
-	mul.s	$f2, $f1, $f1
-	sub.s	$f2, $f2, $f0		! $f2 = y */ y -. x
-	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
-	div.s	$f2, $f2, $f3		! $f2 = (y */ y -. x) /. (2.0 *. y)
-	
-!	sw	$r2, -4($r29)
-!	swcl	$f0, -8($r29)
-!	swcl	$f1, -12($r29)
-!	swcl	$f2, -16($r29)
-!	swcl	$f4, -24($r29)
-!	sw	$r31, -28($r29)
-!	addi	$r29, $r29, -28
-!	fmove	$f0, $f3
-!	jal	.min_caml_myfinv	! $f3 = 1.0 /. $f3
-!	fmove	$f3, $f0
-!	addi	$r29, $r29, 28
-!	lw	$r31, -28($r29)
-!	lwcl	$f4, -24($r29)
-!	lwcl	$f2, -16($r29)
-!	lwcl	$f1, -12($r29)
-!	lwcl	$f0, -8($r29)
-!	lw	$r2, -4($r29)
-!	mul.s	$f2, $f2, $f3
-	
-	sub.s	$f1, $f1, $f2
-	addi	$r2, $r2, -1
-	bne	$r2, $r0, .SQRT_SUB	! ループ
-	fmove	$f0, $f1
-	jr	$r31
+!! * sqrt
+!.min_caml_sqrt:		! 引数 $f0, (r2, f1, f2, f3, f4)
+!	addi	$r2, $r0, 10
+!	lfh	$f1, 16256	! $f1 初期値 1.0
+!	lfl	$f1, 0
+!	lfh	$f4, 16384	! $f4 定数 2.0
+!	lfl	$f4, 0
+!.SQRT_SUB:		! ニュートン法10回, 初期値($f1 1.0)	x $f0, y $f1
+!	mul.s	$f2, $f1, $f1
+!	sub.s	$f2, $f2, $f0		! $f2 = y */ y -. x
+!	mul.s	$f3, $f4, $f1		! $f3 = 2.0 *. y
+!	div.s	$f2, $f2, $f3		! $f2 = (y */ y -. x) /. (2.0 *. y)
+!	
+!!	sw	$r2, -4($r29)
+!!	swcl	$f0, -8($r29)
+!!	swcl	$f1, -12($r29)
+!!	swcl	$f2, -16($r29)
+!!	swcl	$f4, -24($r29)
+!!	sw	$r31, -28($r29)
+!!	addi	$r29, $r29, -28
+!!	fmove	$f0, $f3
+!!	jal	.min_caml_myfinv	! $f3 = 1.0 /. $f3
+!!	fmove	$f3, $f0
+!!	addi	$r29, $r29, 28
+!!	lw	$r31, -28($r29)
+!!	lwcl	$f4, -24($r29)
+!!	lwcl	$f2, -16($r29)
+!!	lwcl	$f1, -12($r29)
+!!	lwcl	$f0, -8($r29)
+!!	lw	$r2, -4($r29)
+!!	mul.s	$f2, $f2, $f3
+!	
+!	sub.s	$f1, $f1, $f2
+!	addi	$r2, $r2, -1
+!	bne	$r2, $r0, .SQRT_SUB	! ループ
+!	fmove	$f0, $f1
+!	jr	$r31
 
-! * finv
+!! * finv
 !.min_caml_myfinv:		! 引数 $f0(a)
 !	lui	$r5, 32640		! r5 = 0x7f800000 (指数マスク)
 !	ori	$r5, $r5, 0

@@ -66,7 +66,7 @@ let sra_of_div e1 e2 pos =
 %token SEMICOLON
 %token LPAREN
 %token RPAREN
-/* %token SQRT */
+%token SQRT
 %token OUTPUT
 %token INPUT
 %token EOF
@@ -81,7 +81,7 @@ let sra_of_div e1 e2 pos =
 %left PLUS MINUS PLUS_DOT MINUS_DOT
 %left AST SLASH AST_DOT SLASH_DOT
 %right prec_unary_minus
-%left prec_app /* SQRT */ OUTPUT INPUT
+%left prec_app SQRT OUTPUT INPUT
 %left DOT
 
 /* 開始記号の定義 */
@@ -169,10 +169,8 @@ exp: /* 一般の式 (caml2html: parser_exp) */
 | INPUT exp
      { Input'(rhs_start_pos 1)}
 */
-/*
 | SQRT exp
     { Sqrt'($2, rhs_start_pos 1) }
-*/
 | exp actual_args
     %prec prec_app
     { App'($1, $2, rhs_start_pos 1) }	/* 部分適応的なことが起こり得る(クロージャ) */

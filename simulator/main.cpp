@@ -144,7 +144,6 @@ void transeInstructions(void){
 
 inst label_resolve(inst pre, int now){
   int addr;
-  bool error = false;
 
   // relative jump
   if( pre.name == "bne" || pre.name == "beq" || pre.name == "bclt" || pre.name == "bclf" ){
@@ -171,7 +170,7 @@ inst label_resolve(inst pre, int now){
   else if(pre.name == "lui"){
     if(labelNames.count(pre.label)){
       addr = labelNames[pre.label];
-      pre.im = (addr*4) & 0xFFFF0000;
+      pre.im = ((addr*4) & 0xFFFF0000) >> 16;
       return pre;
     }
     cerr << "error: label_resolve: notfound" << pre.label << endl;
@@ -626,7 +625,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   else if(instName == "sqrt"){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
-      i1.op = 0x34;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x6;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }

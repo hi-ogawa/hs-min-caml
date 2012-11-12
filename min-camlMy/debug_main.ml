@@ -20,9 +20,12 @@ let trans inchan =
   let exp10' = Elim.f(ConstFold.f(Inline.f(Assoc.f(Beta.f(ElimEqExp.f exp10))))) in
   let Closure.Prog (fundefs1, exp11) = Closure.f exp10 in
   let AsmMy.Prog(fundefs2, exp12) = VirtualMy.f (Closure.Prog(fundefs1, exp11)) in
-  (* let AsmMy.Prog(fundefs3, exp13) = SimmMy.f (AsmMy.Prog(fundefs2, exp12)) in *)
-  (* let AsmMy.Prog(fundefs4, exp14) = RegAllocMy.f (AsmMy.Prog(fundefs3,exp13)) in *)
-  (exp10, exp10')
+  let AsmMy.Prog(fundefs3, exp13) = SimmMy.f (AsmMy.Prog(fundefs2, exp12)) in
+  let AsmMy.Prog(fundefs4, exp14) = RegAllocMy.f (AsmMy.Prog(fundefs3,exp13)) in
+(fundefs4, exp14)
+  (* (fundefs3, exp13) *)
+  (* (fundefs2, exp12) *)
+  (* (exp10, exp10') *)
   (* printf "\n*Typing*  =>\n\n"; *)
   (* Debug_syntax.p_syn exp2 0; *)
   (* printf "\n*KNormal*  =>\n\n"; *)

@@ -15,12 +15,16 @@ FLG_A=0
 FLG_F=0
 FLG_C=0
 FLG_S=0
+FLG_B=0
+FLG_I=0
+INLINE=0
 
 function compile(){
     FILE=$1
+    INLINE=$2
     echo "** COMPILING ${FILE} **" >&2
     cat ${LIB_ML} "${FILE}.ml" > "${FILE}__.ml"
-    ${MINCAMLOPT} -inline 50 "${FILE}__"
+    ${MINCAMLOPT} -inline "${INLINE}" "${FILE}__"
     cat "${FILE}__.s" ${LIB_ASM} > "${FILE}.s"
     rm -rf "${FILE}__.ml" "${FILE}__.s"
 }
@@ -42,6 +46,7 @@ do
 	"c" ) FLG_C=1 ; FILE="$OPTARG" ;;		# compile ont file(~.ml -> ~.s)
 	"s" ) FLG_S=1 ; FILE="$OPTARG" ;;		# simulation(~.ml)
 	"b" ) FLG_B=1 ; FILE="$OPTARG" ;;		# (~.ml  ->  ~.b)
+	"i" ) FLG_I=1 ; INLINE="$OPTARG" ;;
     esac
 done
 #
@@ -76,16 +81,16 @@ then
 
 elif [ ${FLG_C} -eq 1 ] #### one file conpiling ####
 then
-    compile ${FILE}
+    compile ${FILE} ${INLINE}
 
 elif [ ${FLG_S} -eq 1 ] #### one file simulating ####
 then
-    compile ${FILE}
+    compile ${FILE} ${INLINE}
     ${SIM2} "${FILE}.s" -c
 
 elif [ ${FLG_B} -eq 1 ] #### to binary ####
 then
-    compile ${FILE}
+    compile ${FILE} ${INLINE}
     ${SIM2} "${FILE}.s" -b "${FILE}.b"
     WC=`wc -l ${FILE}.b | cut -d ' ' -f 1`	# line num
     N_POW2=1					# 2のn乗
