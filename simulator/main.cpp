@@ -85,6 +85,8 @@ int main(int argc, char** argv){
     // cerr<<hex<<", fmt: 0x"<< insts[i].fmt<<dec<<endl<<endl;
   }
 
+  cerr << "resolved size: " << insts.size() << endl;
+
   cerr << "simulation started" << endl;
   simulator();
   cerr << "simulation ended" << endl;

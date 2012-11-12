@@ -2450,6 +2450,5 @@ let rec rt size_x size_y =
 in
 
 let _ = rt 128 128
-(* let _ = rt 768 768 *)
 
 in ()

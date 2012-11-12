@@ -1,0 +1,120 @@
+1> ./Main --file ./test/min-rt/min-rt-new-utf --iter 1000 --inline 60
+2> ./Main --file ./test/min-rt/min-rt-new-utf --iter 1000 --inline 50
+3> ./Main --inline 40
+									
+#define HALT	0 	 0:          1   0:          1   0:          1 
+#define AND	1 	 1:          0 	 1:          0   1:          0 
+#define ADDU	2 	 2:  110996520 	 2:  110075422   2:  115413011 
+#define SUBU	3 	 3:   29133357 	 3:   29132986   3:   29132986 
+#define SLT	4 	 4:    7077654 	 4:    7002103   4:    7019373 
+#define LW	5 	 5: 2077944325 	 5: 2051729248   5: 2086624056 
+#define SW	6 	 6:  333310340 	 6:  339399585   6:  361051174 
+#define BEQ	7 	 7:          0 	 7:          0   7:          0 
+#define BNE	8 	 8:  359404194 	 8:  352661793   8:  352679063 
+#define ADDI	9 	 9:  770201766 	 9:  765642813   9:  790451609 
+#define ORI	10	10:     498552 	10:     498551  10:     498553 
+#define SLL	11	11:  154195418 	11:  153273945  11:  158611534 
+#define SRA	12	12:   56249105 	12:   56248430  12:   56248430 
+#define LUI	13	13:     476192 	13:     476191  13:     476193 
+#define JR	14	14:   94410686 	14:   98342690  14:  107450282 
+#define INPUT	15	15:       1137 	15:       1137  15:       1137 
+#define OUTPUT	16	16:     155306 	16:     154737  16:     154737 
+#define J	17	17:  160821380 	17:  155894362  17:  150045183 
+#define JAL	18	18:   50639845 	18:   52867138  18:   53688047 
+#define ADDS	19	19:   61367347 	19:   59947175  19:   59947175 
+#define SUBS	20	20:   99945109 	20:   98390094  20:   98390094 
+#define MULS	21	21:  164189445 	21:  161064208  21:  161064208 
+#define DIVS	22	22:   23591494 	22:   23370289  22:   23370289 
+#define FMOVE	23	23:   16863299 	23:   17897925  23:   17943509 
+#define FNEG	24	24:   19270141 	24:   18760529  24:   18760529 
+#define CEQS	25	25:   11404102 	25:   11158214  25:   11158214 
+#define CLES	26	26:   77947292 	26:   76176010  26:   76176010 
+#define LFL	27	27:   73708894 	27:   72081322  27:   72081322 
+#define LFH	28	28:   73708894 	28:   72081322  28:   72081322 
+#define LWCL	29	29:  278133143 	29:  277072995  29:  277128901 
+#define SWCL	30	30:   32152284 	30:   36908411  30:   36964317 
+#define BCLT	31	31:          0 	31:          0  31:          0 
+#define BCLF	32	32:   89351394 	32:   87334224  32:   87334224 
+#define SQRT	33	33:          0 	33:          0  33:          0 
+			ALL: 5227148616	ALL: 5185643850 ALL: 5281945483
+
+4> make min-rt INLINE=50
+5> make min-rt INLINE=50 (global tuple and array, closure NOTHING!!) binary output
+6> + "sqrt" instruction
+
+
+HALT	          1				 1			 1
+AND	          0		   AND:          0	   AND:          0	
+ADDU	  110075422 		  ADDU:   51826363	  ADDU:   51965044	
+SUBU	   29132986 		  SUBU:      75708	  SUBU:      75708	
+SLT	    7002103 		   SLT:    2915933	   SLT:    2920499	
+LW	  803914633 		    LW:  394688184	    LW:  391775415	
+SW	  339399585 		    SW:  146978211	    SW:  143243179	
+BEQ	          0 		   BEQ:          0	   BEQ:          0	
+BNE	  352661793 		   BNE:  287624012	   BNE:  266739349	
+ADDI	  765942898 		  ADDI:  709367842	  ADDI:  683301938	
+ORI	     498551 		   ORI:     105279	   ORI:     105279	
+SLL	  153273945 		   SLL:   98112077	   SLL:   98378807	
+SRA	   56248430 		   SRA:       3434	   SRA:       3434	
+LUI	     476191 		   LUI:      82919	   LUI:      82919	
+JR	   98342690 		    JR:   42634365	    JR:   40583537	
+INPUT	       1137 		 INPUT:       1137	 INPUT:       1137	
+OUTPUT	     154737 		OUTPUT:      49167	OUTPUT:      49167	
+J	  155894362 		     J:  120447524	     J:  120893747	
+JAL	   52867138 		   JAL:   42634365	   JAL:   40583537	
+ADDS	   59947175 		  ADDS:   59947175	  ADDS:   60145173	
+SUBS	   98390094 		  SUBS:   98390094	  SUBS:   54969078	
+MULS	  161064208 		  MULS:  161064208	  MULS:  117798314	
+DIVS	   23370289 		  DIVS:   23370289	  DIVS:    1559312	
+FMOVE	   17897925 		 FMOVE:   17897925	 FMOVE:   14118116	
+FNEG	   18760529 		  FNEG:   18760529	  FNEG:   18834169	
+CEQS	   11158214 		  CEQS:   11158214	  CEQS:   11192320	
+CLES	   76176010 		  CLES:   76176010	  CLES:   76503203	
+LFL	   72081322 		   LFL:   72081322	   LFL:   67979877	
+LFH	   72081322 		   LFH:   72081322	   LFH:   67979877	
+LWCL	  277043239 		  LWCL:  277043239	  LWCL:  275961335	
+SWCL	   36908411 		  SWCL:   36908411	  SWCL:   35345476	
+BCLT	          0 		  BCLT:          0	  BCLT:          0	
+BCLF	   87334224 		  BCLF:   87334224	  BCLF:   87695523	
+SQRT	          0 		  SQRT:          0	  SQRT:    2197817	
+    ALL: 3938099564		   ALL: 2909759483	   ALL: 2732982287	
+
+
+7> INLINE=55 (resolved size: 14522)
+8> INLINE=58 (resolved size: 14624)
+
+  HALT:		 1	  HALT:          1
+   AND:          0	   AND:          0
+  ADDU:   52349764	  ADDU:   52349764
+  SUBU:      75708	  SUBU:      75708
+   SLT:    2920431	   SLT:    2920431
+    LW:  384786874	    LW:  384786874
+    SW:  134224735	    SW:  134224735
+   BEQ:          0	   BEQ:          0
+   BNE:  266739218	   BNE:  266737218
+  ADDI:  678588006	  ADDI:  677467946
+   ORI:     105279	   ORI:     105279
+   SLL:   98763525	   SLL:   98763525
+   SRA:       3434	   SRA:       3434
+   LUI:      82919	   LUI:      82919
+    JR:   38458345	    JR:   38458345
+ INPUT:       1137	 INPUT:       1137
+OUTPUT:      49167	OUTPUT:      49167
+     J:  120824810	     J:  120819810
+   JAL:   38458345	   JAL:   38458345
+  ADDS:   60145173	  ADDS:   60141173
+  SUBS:   54969078	  SUBS:   54967078
+  MULS:  117798314	  MULS:  117796314
+  DIVS:    1559312	  DIVS:    1559312
+ FMOVE:   13672490	 FMOVE:   13662490
+  FNEG:   18834169	  FNEG:   18834169
+  CEQS:   11192320	  CEQS:   11192320
+  CLES:   76503203	  CLES:   76501203
+   LFL:   67979877	   LFL:   67977877
+   LFH:   67979877	   LFH:   67977877
+  LWCL:  272424964	  LWCL:  272424964
+  SWCL:   32031923	  SWCL:   32031923
+  BCLT:          0	  BCLT:          0
+  BCLF:   87695523	  BCLF:   87693523
+  SQRT:    2197817	  SQRT:    2197817
+   ALL: 2701415738	   ALL: 2700262678   
