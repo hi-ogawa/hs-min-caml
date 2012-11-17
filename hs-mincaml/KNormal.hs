@@ -22,6 +22,7 @@ data T = Unit
        | Add I.Id I.Id | Sub I.Id I.Id -- | Mul I.Id I.Id | Div I.Id I.Id 
        | SLL I.Id Int  | SRA I.Id Int
        | FNeg I.Id
+       | Fabs I.Id         
        | Sqrt I.Id
        | FAdd I.Id I.Id | FSub I.Id I.Id | FMul I.Id I.Id | FDiv I.Id I.Id
 --       | Eq I.Id I.Id | Le I.Id I.Id  -- ifEq ifLe になる
@@ -58,16 +59,19 @@ kNizeMain typedExp =
 kNize :: TypeEnv -> S.T -> I.IdState (T, T.T)
 kNize tEnv exp = case exp of
   S.Unit        -> return (Unit, T.Unit)
-  S.Bool b      -> return $ (Int (if b then 1 else 0), T.Int)
+  S.Bool b      -> return (Int (if b then 1 else 0), T.Int)
   S.Int i       -> return (Int i, T.Int)
   S.Float f     -> return (Float f, T.Float)
-  S.Not e       -> kNize tEnv (S.If e (S.Bool False) (S.Bool True)) >>= return
+  S.Not e       -> kNize tEnv (S.If e (S.Bool False) (S.Bool True))
   S.Neg e       -> do et <- kNize tEnv e
                       insertLet et
                         (\x -> return (Neg x, T.Int))
   S.FNeg e      -> do et <- kNize tEnv e
                       insertLet et
                         (\x -> return (FNeg x, T.Float))
+  S.Fabs e      -> do et <- kNize tEnv e
+                      insertLet et
+                        (\x -> return (Fabs x, T.Float))
   S.Sqrt e      -> do et <- kNize tEnv e
                       insertLet et
                         (\x -> return (Sqrt x, T.Float))
@@ -79,14 +83,6 @@ kNize tEnv exp = case exp of
                       insertLet et1
                         (\x -> insertLet et2
                                (\y -> return (Sub x y, T.Int)))
-  -- S.Mul e1 e2   -> do [et1, et2] <- mapM (kNize tEnv) [e1, e2]
-  --                     insertLet et1
-  --                       (\x -> insertLet et2
-  --                              (\y -> return (Mul x y, T.Int)))
-  -- S.Div e1 e2   -> do [et1, et2] <- mapM (kNize tEnv) [e1, e2]
-  --                     insertLet et1
-  --                       (\x -> insertLet et2
-  --                              (\y -> return (Div x y, T.Int)))
   S.SLL e i     -> do et <- kNize tEnv e
                       insertLet et (\x -> return (SLL x i, T.Int))
   S.SRA e i     -> do et <- kNize tEnv e
@@ -109,6 +105,10 @@ kNize tEnv exp = case exp of
                                (\y -> return (FDiv x y, T.Float)))
   cmp@(S.Eq e1 e2)      -> kNize tEnv $ S.If cmp (S.Bool True) (S.Bool False)
   cmp@(S.Le e1 e2)      -> kNize tEnv $ S.If cmp (S.Bool True) (S.Bool False)
+  -- boolのnotの最適化 --
+  S.If (S.Not e) e3 e4
+    -> kNize tEnv (S.If e e4 e3)
+  ----------------------
   S.If (S.Eq e1 e2) e3 e4
     -> do [et1, et2, (e3',t), (e4',_)] <- mapM (kNize tEnv) [e1,e2,e3,e4]
           insertLet et1
@@ -195,6 +195,7 @@ freeVar exp = case exp of
   SLL x i       -> St.fromList [x]
   SRA x i       -> St.fromList [x]
   FNeg x        -> St.fromList [x]
+  Fabs x        -> St.fromList [x]  
   Sqrt x        -> St.fromList [x]  
   FAdd x1 x2    -> St.fromList [x1, x2]
   FSub x1 x2    -> St.fromList [x1, x2]
@@ -229,6 +230,7 @@ printKNormal exp dep =
     Float f     -> "Float: "++(show f)++"\n"
     Neg x       -> "Neg: "++(show x)++"\n"
     FNeg x      -> "FNeg: "++(show x)++"\n"
+    Fabs x      -> "Fabs: "++(show x)++"\n"    
     Sqrt x      -> "Sqrt: "++(show x)++"\n"    
     Add x1 x2   -> "Add: "++(show x1)++", "++(show x2)++"\n"
     Sub x1 x2   -> "Sub: "++(show x1)++", "++(show x2)++"\n"

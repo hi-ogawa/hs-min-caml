@@ -4,6 +4,3 @@ let rec fib x =
     fib(x-1) + fib(x-2)
 in
 print_int (fib 15)
-
-
-

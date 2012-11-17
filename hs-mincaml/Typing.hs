@@ -12,7 +12,6 @@ import Control.Monad.Error
 import qualified Debug.Trace as DT
 
 type TypeEnv = Mp.Map I.Id T.T -- 型環境
--- type Constraints = St.Set (T.T, T.T) -- 型に関する制約
 type Constraints = [(T.T, T.T)] -- 型に関する制約
 type Dainyu = Mp.Map T.TypeN T.T -- 型変数から具体的な型へのマップ
 
@@ -53,11 +52,10 @@ gatherC tEnv exp =
     S.Not e     -> do{ t <- gatherC tEnv e; insertC (t, T.Bool); return T.Bool }
     S.Neg e     -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
     S.FNeg e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
+    S.Fabs e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
     S.Sqrt e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
     S.Add e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
     S.Sub e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
-    -- S.Mul e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
-    -- S.Div e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
     S.SLL e _   -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
     S.SRA e _   -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
     S.FAdd e1 e2        -> gatherDualOp tEnv e1 e2 T.Float
@@ -207,11 +205,10 @@ inferExp dain exp = case exp of
   S.Not e       -> S.Not (inferE' e)
   S.Neg e       -> S.Neg (inferE' e)
   S.FNeg e      -> S.FNeg (inferE' e)
+  S.Fabs e      -> S.Fabs (inferE' e)  
   S.Sqrt e      -> S.Sqrt (inferE' e)  
   S.Add e1 e2   -> S.Add (inferE' e1) (inferE' e2)
   S.Sub e1 e2   -> S.Sub (inferE' e1) (inferE' e2)
-  -- S.Mul e1 e2   -> S.Mul (inferE' e1) (inferE' e2)
-  -- S.Div e1 e2   -> S.Div (inferE' e1) (inferE' e2)
   S.SLL e i     -> S.SLL (inferE' e) i
   S.SRA e i     -> S.SRA (inferE' e) i
   S.FAdd e1 e2	-> S.FAdd (inferE' e1) (inferE' e2)

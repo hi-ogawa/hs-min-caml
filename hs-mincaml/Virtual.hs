@@ -28,11 +28,10 @@ cToAsm gloTup tEnv exp = case exp of
   C.Float f             -> return $ A.Ans $ A.SetF   f
   C.Neg x               -> return $ A.Ans $ A.Neg    x
   C.FNeg x              -> return $ A.Ans $ A.FNeg   x
+  C.Fabs x              -> return $ A.Ans $ A.Fabs   x  
   C.Sqrt x              -> return $ A.Ans $ A.Sqrt   x  
   C.Add x1 x2           -> return $ A.Ans $ A.Add    x1 (A.V x2)
   C.Sub x1 x2           -> return $ A.Ans $ A.Sub    x1 (A.V x2)
-  -- C.Mul x1 x2           -> return $ A.Ans $ A.Mul    x1 (A.V x2)
-  -- C.Div x1 x2           -> return $ A.Ans $ A.Div    x1 (A.V x2)
   C.SLL x i             -> return $ A.Ans $ A.SLL x i
   C.SRA x i             -> return $ A.Ans $ A.SRA x i  
   C.FAdd x1 x2          -> return $ A.Ans $ A.FAdd   x1 x2
@@ -43,16 +42,16 @@ cToAsm gloTup tEnv exp = case exp of
     -> do [e1',e2'] <- mapM (cToAsm gloTup tEnv) [e1,e2]
           let Just t1 = Mp.lookup x1 tEnv
           case t1 of
-            T.Bool  -> return $ A.Ans $ A.IfEq  x1 x2 e1' e2'
-            T.Int   -> return $ A.Ans $ A.IfEq  x1 x2 e1' e2'
+            T.Bool  -> return $ A.Ans $ A.IfEq  x1 (A.V x2) e1' e2'
+            T.Int   -> return $ A.Ans $ A.IfEq  x1 (A.V x2) e1' e2'
             T.Float -> return $ A.Ans $ A.IfFEq x1 x2 e1' e2'
             _       -> assert False $ error "dummy"
   C.IfLe x1 x2 e1 e2
     -> do [e1',e2'] <- mapM (cToAsm gloTup tEnv) [e1,e2]
           let Just t1 = Mp.lookup x1 tEnv
           case t1 of
-            T.Bool  -> return $ A.Ans $ A.IfLe  x1 x2 e1' e2'
-            T.Int   -> return $ A.Ans $ A.IfLe  x1 x2 e1' e2'
+            T.Bool  -> return $ A.Ans $ A.IfLe  x1 (A.V x2) e1' e2'
+            T.Int   -> return $ A.Ans $ A.IfLe  x1 (A.V x2) e1' e2'
             T.Float -> return $ A.Ans $ A.IfFLe x1 x2 e1' e2'
             _       -> assert False $ error "dummy"
   -- global領域に束縛(e1'内でregHpを使ったりしたら怪しい気がする)(assoc後なら大丈夫な気もする)
@@ -152,13 +151,18 @@ cToAsm gloTup tEnv exp = case exp of
   -- globalのyをxtsに束縛            
   C.LetTuple xts y e2   | Mp.member y (G.dirEnv gloTup)
     -> do e2' <- cToAsm gloTup (foldl (\env (x,t)-> Mp.insert x t env) tEnv xts) e2
-          (_, ldAndExp) <- foldM subFun (0, e2') xts
           let Just gloY = Mp.lookup y (G.offMap gloTup) -- gloY は Int
-          return $ A.Let (A.regFr, T.Int) (A.Set gloY) ldAndExp
-    where subFun (o,e) (x, t) = case t of
-            T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
-            T.Float        -> return (o+4,  A.Let (x,t) (A.LdF A.regFr (A.C o)) e)
-            _              -> return (o+4,  A.Let (x,t) (A.Ld  A.regFr (A.C o)) e)
+          let e2Fv      = C.freeVar e2
+          let subFun (o,e) (x,t) = case t of
+                T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
+                T.Float        -> if St.member x e2Fv
+                                  then return (o+4,  A.Let (x,t) (A.LdF A.regZr (A.C $ gloY + o)) e)
+                                  else return (o+4, e)
+                _              -> if St.member x e2Fv 
+                                  then return (o+4,  A.Let (x,t) (A.Ld  A.regZr (A.C $ gloY + o)) e)
+                                  else return (o+4, e)     
+          (_, ldAndExp) <- foldM subFun (0, e2') xts
+          return ldAndExp
   -- 普通のLetTuple              
   C.LetTuple xts y e2
     -> do e2' <- cToAsm gloTup (foldl (\env (x,t)-> Mp.insert x t env) tEnv xts) e2
@@ -179,14 +183,14 @@ cToAsm gloTup tEnv exp = case exp of
           offset  <- I.genNewId "off1"
           case getType tEnv x of
             T.Array T.Unit   -> return $ A.Ans A.Nop
-            T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
+            T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2)
                                               (A.Ans $ A.LdF offset (A.C gloX))
-            T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
+            T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2)
                                               (A.Ans $ A.Ld  offset (A.C gloX))
             _                -> error (show __LINE__)
   -- 普通のget
   C.Get x y     
-    -> do offset  <- I.genNewId "off1"
+    -> do offset  <- I.genNewId "off2"
           case getType tEnv x of
             T.Array T.Unit   -> return $ A.Ans A.Nop
             T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
@@ -194,10 +198,10 @@ cToAsm gloTup tEnv exp = case exp of
             T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
                                               (A.Ans $ A.Ld  x (A.V offset))
             _                -> error (show __LINE__)
-  -- global arrayのput              
+  -- global arrayのput
   C.Put x y z     | Mp.member x (G.dirEnv gloTup)
     -> do let Just gloX = Mp.lookup x (G.offMap gloTup) -- gloX は Int
-          offset  <- I.genNewId "off1"
+          offset  <- I.genNewId "off3"
           stf     <- A.mySeq (A.StF z offset (A.C gloX)) (A.Ans A.Nop)
           st      <- A.mySeq (A.St  z offset (A.C gloX)) (A.Ans A.Nop)
           case getType tEnv z of
@@ -206,7 +210,7 @@ cToAsm gloTup tEnv exp = case exp of
             _       -> return $ A.Let (offset, T.Int) (A.SLL y 2) st
   -- 普通のget
   C.Put x y z   
-    -> do offset  <- I.genNewId "off1"
+    -> do offset  <- I.genNewId "off4"
           stf     <- A.mySeq (A.StF z x (A.V offset)) (A.Ans A.Nop)
           st      <- A.mySeq (A.St  z x (A.V offset)) (A.Ans A.Nop)
           case getType tEnv z of

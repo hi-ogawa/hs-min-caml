@@ -19,11 +19,10 @@ data T = Unit
        | Float Float
        | Neg I.Id
        | FNeg I.Id         
+       | Fabs I.Id
        | Sqrt I.Id
        | Add I.Id I.Id
        | Sub I.Id I.Id
-       -- | Mul I.Id I.Id
-       -- | Div I.Id I.Id
        | SLL I.Id Int
        | SRA I.Id Int
        | FAdd I.Id I.Id
@@ -66,11 +65,10 @@ cloNize gloTup tEnv kSet exp = case exp of
   K.Float f     -> return $ Float f
   K.Neg  x      -> return $ Neg x
   K.FNeg y      -> return $ FNeg y
+  K.Fabs y      -> return $ Fabs y  
   K.Sqrt y      -> return $ Sqrt y  
   K.Add x y     -> return $ Add x y
   K.Sub x y     -> return $ Sub x y
-  -- K.Mul x y     -> return $ Mul x y
-  -- K.Div x y     -> return $ Div x y
   K.SLL x i     -> return $ SLL x i
   K.SRA x i     -> return $ SRA x i  
   K.FAdd x y    -> return $ FAdd x y
@@ -131,11 +129,10 @@ freeVar exp = case exp of
   Float _       -> St.empty
   Neg x         -> St.singleton x
   FNeg x        -> St.singleton x
+  Fabs x        -> St.singleton x  
   Sqrt x        -> St.singleton x  
   Add x y       -> St.fromList [x, y]
   Sub x y       -> St.fromList [x, y]
-  -- Mul x y       -> St.fromList [x, y]
-  -- Div x y       -> St.fromList [x, y]
   SLL x i       -> St.singleton x
   SRA x i       -> St.singleton x
   FAdd x y      -> St.fromList [x, y]
@@ -176,11 +173,10 @@ printClosure exp dep =
     Float f     -> "Float: "++(show f)++"\n"
     Neg x       -> "Neg: "++(show x)++"\n"
     FNeg x      -> "FNeg: "++(show x)++"\n"
+    Fabs x      -> "Fabs: "++(show x)++"\n"    
     Sqrt x      -> "Sqrt: "++(show x)++"\n"    
     Add x1 x2   -> "Add: "++(show x1)++", "++(show x2)++"\n"
     Sub x1 x2   -> "Sub: "++(show x1)++", "++(show x2)++"\n"
-    -- Mul x1 x2   -> "Mul: "++(show x1)++", "++(show x2)++"\n"
-    -- Div x1 x2   -> "Div: "++(show x1)++", "++(show x2)++"\n"
     SLL x i     -> "SLL: "++(show x)++", "++(show i)++"\n"
     SRA x i     -> "SRA: "++(show x)++", "++(show i)++"\n"    
     FAdd x1 x2  -> "FAdd: "++(show x1)++", "++(show x2)++"\n"

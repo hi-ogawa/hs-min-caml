@@ -1,20 +1,26 @@
 (* 浮動小数基本演算1 *)
-let rec fequal a b = a = b in
-let rec fless a b = (a < b) in
+(* これらの関数は総じて、K正規化により
+   LetRec f x .. = if x .. then 1 else 0 in ..
+   の形に変換されるので、たとえこの後にinline展開されても比較のオーバーヘッドが
+   大きくなる可能性がある。
+   だから返り値がBOOLの関数は組み込みにすべし?
+*)
+(* let rec fequal a b = a = b in *)
+(* let rec fless a b = (a < b) in *)
 
-let rec fispos a = (a > 0.0) in
-let rec fisneg a = (a < 0.0) in
-let rec fiszero a = (a = 0.0) in
+(* let rec fispos a = (a > 0.0) in *)
+(* let rec fisneg a = (a < 0.0) in *)
+(* let rec fiszero a = (a = 0.0) in *)
 
-(* bool系 *)
-let rec xor a b = a <> b in
+(* (\* bool系 *\) *)
+(* let rec xor a b = a <> b in *)
 
 (* 浮動小数基本演算2 *)
-let rec fabs a =
-  if a < 0.0 then -. a
-  else a
-in
-let rec abs_float x = fabs x in
+(* let rec fabs a = *)
+(*   if a < 0.0 then -. a *)
+(*   else a *)
+(* in *)
+let rec abs_float x = fabs x in	(**)
 let rec fneg a = -. a in
 let rec fhalf a = a *. 0.5 in
 let rec fsqr a = a *. a in

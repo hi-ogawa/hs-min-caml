@@ -27,11 +27,10 @@ alphaTrans aEnv exp = case exp of
   K.Float f     -> return $ K.Float f
   K.Neg x       -> return $ K.Neg (find x aEnv)
   K.FNeg x      -> return $ K.FNeg (find x aEnv)
+  K.Fabs x      -> return $ K.Fabs (find x aEnv)    
   K.Sqrt x      -> return $ K.Sqrt (find x aEnv)  
   K.Add x1 x2   -> return $ K.Add (find x1 aEnv) (find x2 aEnv)
   K.Sub x1 x2   -> return $ K.Sub (find x1 aEnv) (find x2 aEnv)  
-  -- K.Mul x1 x2   -> return $ K.Mul (find x1 aEnv) (find x2 aEnv)
-  -- K.Div x1 x2   -> return $ K.Div (find x1 aEnv) (find x2 aEnv)
   K.SLL x i     -> return $ K.SLL (find x aEnv) i
   K.SRA x i     -> return $ K.SRA (find x aEnv) i
   K.FAdd x1 x2   -> return $ K.FAdd (find x1 aEnv) (find x2 aEnv)

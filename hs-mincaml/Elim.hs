@@ -8,26 +8,26 @@ import qualified Debug.Trace as DT
 
 elimMain :: K.T -> K.T
 elimMain exp = 
-  let !_ = DT.trace "elim.." () in
+  let !_ = DT.trace ("elim.."++(show "??")) () in
   f exp
 
 f :: K.T -> K.T
 f exp = case exp of
   K.Let (x,t) e1 e2 -> 
     (if St.notMember x (K.freeVar e2') && not (effect e1')
-     then f e2
+     then DT.trace ("elim: "++(show x)) e2'
      else K.Let (x,t) e1' e2')
       where e1' = f e1
             e2' = f e2
   K.LetRec K.Fundef{K.name=(x,t), K.args=yts, K.body=e1} e2 ->
     (if St.notMember x (K.freeVar e2')
-     then e2'
+     then DT.trace ("elim: "++(show x)) e2'
      else K.LetRec K.Fundef{K.name=(x,t), K.args=yts, K.body=e1'} e2')
     where e1' = f e1
           e2' = f e2
   K.LetTuple xts y e ->
     (if and $ map (\x -> St.notMember x (K.freeVar e')) ((fst.unzip) xts)
-     then e'
+     then DT.trace ("elim: "++(show xts)) e'
      else K.LetTuple xts y e')
     where e' = f e
   K.IfEq x1 x2 e1 e2 -> K.IfEq x1 x2 (f e1) (f e2)

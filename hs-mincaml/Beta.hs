@@ -24,6 +24,7 @@ g bEnv exp = case exp of
   K.SLL x  i    -> K.SLL (find bEnv x) i
   K.SRA x  i    -> K.SRA (find bEnv x) i
   K.FNeg x      -> K.FNeg (find bEnv x)
+  K.Fabs x      -> K.Fabs (find bEnv x)  
   K.Sqrt x      -> K.Sqrt (find bEnv x)  
   K.FAdd x1 x2  -> K.FAdd (find bEnv x1) (find bEnv x2)
   K.FSub x1 x2  -> K.FSub (find bEnv x1) (find bEnv x2)

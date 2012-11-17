@@ -9,11 +9,12 @@ data T = Unit
        | Float Float
        | Not T
        | Neg T
-       | Add T T | Sub T T -- | Mul T T | Div T T 
+       | Add T T | Sub T T
        | SLL T Int | SRA T Int
        | FNeg T
+       | Fabs T
        | FAdd T T | FSub T T | FMul T T | FDiv T T
-       | Eq T T | Le T T 
+       | Eq T T | Le T T
        | Sqrt T
        | If T T T
        | Var I.Id
@@ -44,11 +45,10 @@ printSyntax exp dep =
     Not e       -> "Not\n"++(printE e)
     Neg e       -> "Neg\n"++(printE e)
     FNeg e      -> "FNeg\n"++(printE e)
+    Fabs e      -> "Fabs\n"++(printE e)
     Sqrt e      -> "Sqrt\n"++(printE e)    
     Add e1 e2   -> "Add\n"++(printE e1)++(printE e2)
     Sub e1 e2   -> "Sub\n"++(printE e1)++(printE e2)
-    -- Mul e1 e2   -> "Mul\n"++(printE e1)++(printE e2)
-    -- Div e1 e2   -> "Div\n"++(printE e1)++(printE e2)
     SLL e i     -> "SLL: "++(show i)++"\n"++(printE e)
     SRA e i     -> "SRA: "++(show i)++"\n"++(printE e)
     FAdd e1 e2  -> "FAdd\n"++(printE e1)++(printE e2)

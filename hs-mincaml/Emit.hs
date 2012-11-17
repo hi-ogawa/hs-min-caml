@@ -35,7 +35,13 @@ emitMain gloOffset prog c =
     
 emitMain' :: G.GloOffset -> A.Prog -> EmitMonad ()
 emitMain' gloOffset (e, fundefs) = 
-  do tell $ printf "\t%s\t%s\n"                         "j" "min_caml_start"
+  do tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regZrF          (0::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regZrF          (0::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regOneF         (16256::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regOneF         (0::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regMiOneF       (49024::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regMiOneF       (0::Int)
+     tell $ printf "\t%s\t%s\n"                         "j" "min_caml_start"
      mapM emitFun fundefs
      tell $ printf "%s:\n"                              "min_caml_start"
      tell $ printf "\t%s\t%s, %s, %d\n"                 "ori" A.regHp "$r0" gloOffset
@@ -63,15 +69,23 @@ writeE dest (A.Let (x,t) exp e) = do writeExp (NonTail x) exp
 writeExp :: Dest -> A.Exp -> EmitMonad ()
 writeExp (NonTail a) exp = case exp of
   A.Nop                   -> return ()
-  A.Set  i | -32768 <= i && i <= 32767 
+  A.Set  i              | -32768 <= i && i <= 32767 
                           -> tell $ printf "\t%s\t%s, %s, %d\n"         "addi" a "$r0" i
   A.Set  i                -> do tell $ printf "\t%s\t%s, %d\n"          "lui"  a hi
                                 tell $ printf "\t%s\t%s, %s, %d\n"      "ori"  a a lo
     where i' = fromIntegral i :: Word32
           hi = (i' `div` 0x10000) `mod` 0x10000
           lo = i' `mod` 0x10000
+  A.SetF f              | f == 0.0
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regZrF
+  A.SetF f              | f == 1.0  
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regOneF
+  A.SetF f              | f == -1.0  
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regMiOneF
   A.SetF f                -> do tell $ printf "\t%s\t%s, %d\n"          "lfh"  a hi
-                                tell $ printf "\t%s\t%s, %d\n"          "lfl"  a lo
+                                case lo of
+                                  0     -> return ()
+                                  _     -> tell $ printf "\t%s\t%s, %d\n"          "lfl"  a lo 
     where f' = floatToWord f :: Word32
           hi = (f' `div` 0x10000) `mod` 0x10000
           lo = f' `mod` 0x10000
@@ -81,36 +95,41 @@ writeExp (NonTail a) exp = case exp of
   A.Neg  x                -> tell $ printf "\t%s\t%s, %s, %s\n"         "subu" a "$r0" x
   A.Add  x (A.V y)        -> tell $ printf "\t%s\t%s, %s, %s\n"         "addu" a x y
   A.Sub  x (A.V y)        -> tell $ printf "\t%s\t%s, %s, %s\n"         "subu" a x y
-  -- A.Mul  x (A.V y)        -> tell $ printf "\t%s\t%s, %s, %s\n"         "mul"  a x y
-  -- A.Div  x (A.V y)        -> tell $ printf "\t%s\t%s, %s, %s\n"         "div"  a x y
   A.Add  x (A.C i)        -> tell $ printf "\t%s\t%s, %s, %d\n"         "addi" a x i
   A.Sub  x (A.C i)        -> tell $ printf "\t%s\t%s, %s, %d\n"         "addi" a x (-i)
-  -- A.Mul  x (A.C i)        -> error ((show __FILE__)++(show __LINE__)) 
-  -- A.Div  x (A.C i)        -> error ((show __FILE__)++(show __LINE__))
   A.SLL  x i              -> tell $ printf "\t%s\t%s, %s, %d\n"         "sll" a x i
   A.SRA  x i              -> tell $ printf "\t%s\t%s, %s, %d\n"         "sra" a x i
-  A.Ld   x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ld var"
-                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lw"    a (0::Int) "$r1" "ld var"
-  A.Ld   x (A.C i)        -> tell $ printf "\t%s\t%s, %d(%s)\n"         "lw" a i x
-  A.St   x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "st var"
-                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "sw"    x (0::Int) "$r1" "st var"
+  -- A.Ld   x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ld var"
+  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lw"    a (0::Int) "$r1" "ld var"
+  A.Ld   x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwr" a y x         "ld var"  
+  A.Ld   x (A.C i)        -> tell $ printf "\t%s\t%s, %d(%s)\n"         "lw"  a i x
+  -- A.St   x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "st var"
+  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "sw"    x (0::Int) "$r1" "st var"
+  A.St   x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swr" x z y         "st var"  
   A.St   x y (A.C i)      -> tell $ printf "\t%s\t%s, %d(%s)\n"         "sw" x i y
   A.FMov x | a == x       -> return ()
   A.FMov x                -> tell $ printf "\t%s\t%s, %s\n"             "fmove" a x
   A.FNeg x                -> tell $ printf "\t%s\t%s, %s\n"             "fneg"  a x
+  A.Fabs x                -> tell $ printf "\t%s\t%s, %s\n"             "fabs"  a x  
   A.Sqrt x                -> tell $ printf "\t%s\t%s, %s\n"             "sqrt"  a x  
   A.FAdd x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "add.s" a x y
   A.FSub x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "sub.s" a x y
   A.FMul x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "mul.s" a x y
   A.FDiv x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "div.s" a x y
-  A.LdF  x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ldf var"
-                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lwcl"  a (0::Int) "$r1" "ldf var"
+  -- A.LdF  x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ldf var"
+  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lwcl"  a (0::Int) "$r1" "ldf var"
+  A.LdF  x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwclr" a y x         "ldf var"  
   A.LdF  x (A.C i)        -> tell $ printf "\t%s\t%s, %d(%s)\n"         "lwcl" a i x                     
-  A.StF  x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "stf var"
-                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "swcl"  x (0::Int) "$r1" "stf var"
+  -- A.StF  x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "stf var"
+  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "swcl"  x (0::Int) "$r1" "stf var"
+  A.StF  x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swclr" x z y        "stf var"  
   A.StF  x y (A.C i)      -> tell $ printf "\t%s\t%s, %d(%s)\n"         "swcl" x i y  
-  A.IfEq x y e1 e2        -> ifNonTail x y e1 e2 "beq" "bne" a
-  A.IfLe x y e1 e2        -> ifNonTail x y e1 e2 "ble" "bgt" a
+  A.IfEq x y'@(A.V y) e1 e2       -> ifNonTail x y' e1 e2 "beq"  "bne"  a
+  A.IfEq x y'@(A.C i) e1 e2       -> ifNonTail x y' e1 e2 "beqi" "bnei" a  
+  A.IfLe x y'@(A.V y) e1 e2       -> ifNonTail x y' e1 e2 "ble"  "bgt"  a
+  A.IfLe x y'@(A.C i) e1 e2       -> ifNonTail x y' e1 e2 "blei" "bgti" a  
+  A.IfGe x y'@(A.V y) e1 e2       -> error ""
+  A.IfGe x y'@(A.C i) e1 e2       -> ifNonTail x y' e1 e2 "bgei" "blti" a    
   A.IfFEq x y e1 e2       -> do tell $ printf "\t%s\t%s, %s\n"          "c.eq.s" x y
                                 ifNonTailF e1 e2 "bclt" "bclf" a
   A.IfFLe x y e1 e2       -> do tell $ printf "\t%s\t%s, %s\n"          "c.le.s" x y
@@ -121,7 +140,7 @@ writeExp (NonTail a) exp = case exp of
        label1 <- genNewLabel "lab1"
        label2 <- genNewLabel "lab2"       
        tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "sw" A.regRa (-ss) A.regSp        "call-cls"
-       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regSw (0::Int) A.regCl     ".."
+       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regSw (0::Int) A.regCl     "call-cls"
        tell $ printf "\t%s\t%s, %s, %d\n"                        "addi" A.regSp A.regSp (-ss)
        tell $ printf "\t%s\t%s\n"                                "jal"  label2                          
        tell $ printf "\t%s\t%s\n"                                "j"    label1                          
@@ -129,7 +148,7 @@ writeExp (NonTail a) exp = case exp of
        tell $ printf "\t%s\t%s\n"                                "jr"   A.regSw                         
        tell $ printf "%s:\n"                                     label1                                 
        tell $ printf "\t%s\t%s, %s, %d\n"                        "addi" A.regSp A.regSp (ss)       
-       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regRa (-ss) A.regSp        ".."
+       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regRa (-ss) A.regSp        "call-cls"
        (if elem a A.iRegs && a /= (head A.iRegs)                                                        
         then tell $ printf "\t%s\t%s, %s, %d\t!%s\n"                "addi" a (head A.iRegs) (0::Int)    "call-cls"
         else if elem a A.fRegs && a /= (head A.fRegs)                                                   
@@ -139,10 +158,10 @@ writeExp (NonTail a) exp = case exp of
     do writeArgs [] ys zs
        ss <- getStackSize ()
        tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "sw" A.regRa (-ss) A.regSp        "call-dir"
-       tell $ printf "\t%s\t%s, %s, %d\t!%s\n"                        "addi" A.regSp A.regSp (-ss)      ".."
+       tell $ printf "\t%s\t%s, %s, %d\t!%s\n"                        "addi" A.regSp A.regSp (-ss)      "call-dir"
        tell $ printf "\t%s\t%s\n"                                "jal"  x
        tell $ printf "\t%s\t%s, %s, %d\n"                        "addi" A.regSp A.regSp (ss)
-       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regRa (-ss) A.regSp        ".."
+       tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                        "lw" A.regRa (-ss) A.regSp        "call-dir"
        (if elem a A.iRegs && a /= (head A.iRegs)
         then tell $ printf "\t%s\t%s, %s, %d\t!%s\n"                "addi" a (head A.iRegs) (0::Int)    "call-dir"
         else if elem a A.fRegs && a /= (head A.fRegs)
@@ -192,10 +211,6 @@ writeExp Tail exp = case exp of
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.Sub  _ _            -> do writeExp (NonTail (head A.iRegs)) exp
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
-  -- A.Mul  _ _            -> do writeExp (NonTail (head A.iRegs)) exp
-  --                             tell $ printf "\t%s\t%s\n"                "jr" "$r31"
-  -- A.Div  _ _            -> do writeExp (NonTail (head A.iRegs)) exp
-  --                             tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.SLL  _ _            -> do writeExp (NonTail (head A.iRegs)) exp
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.SRA  _ _            -> do writeExp (NonTail (head A.iRegs)) exp
@@ -228,8 +243,12 @@ writeExp Tail exp = case exp of
         then writeExp (NonTail (head A.iRegs)) exp
         else writeExp (NonTail (head A.fRegs)) exp)
        tell $ printf "\t%s\t%s\n"                                       "jr" "$r31"
-  A.IfEq x y e1 e2      -> ifTail x y e1 e2 "beq" "bne"
-  A.IfLe x y e1 e2      -> ifTail x y e1 e2 "ble" "bgt"
+  A.IfEq x y'@(A.V y) e1 e2       -> ifTail x y' e1 e2 "beq"  "bne" 
+  A.IfEq x y'@(A.C i) e1 e2       -> ifTail x y' e1 e2 "beqi" "bnei"
+  A.IfLe x y'@(A.V y) e1 e2       -> ifTail x y' e1 e2 "ble"  "bgt" 
+  A.IfLe x y'@(A.C i) e1 e2       -> ifTail x y' e1 e2 "blei" "bgti"
+  A.IfGe x y'@(A.V y) e1 e2       -> error ""
+  A.IfGe x y'@(A.C i) e1 e2       -> ifTail x y' e1 e2 "bgei" "blti"
   A.IfFEq x y e1 e2     -> do tell $ printf "\t%s\t%s, %s\n"            "c.eq.s" x y
                               ifTailF e1 e2 "bclt" "bclf"
   A.IfFLe x y e1 e2     -> do tell $ printf "\t%s\t%s, %s\n"            "c.le.s" x y
@@ -240,24 +259,30 @@ writeExp Tail exp = case exp of
   A.CallDir (I.Label x) ys zs -> do writeArgs [] ys zs
                                     tell $ printf "\t%s\t%s\n"          "j"  x
 
-ifTail :: I.Id->I.Id -> A.T->A.T -> String -> String -> EmitMonad ()
-ifTail x y e1 e2 brt brf = 
+ifTail :: I.Id->A.IdOrIm -> A.T->A.T -> String->String -> EmitMonad ()
+ifTail x y' e1 e2 brt brf = 
   do label1 <- genNewLabel brt
      label2 <- genNewLabel brf
      ((sts0,stm0), _) <- get             -- backup stack
-     tell $ printf "\t%s\t%s, %s, %s\n"                                 brf x y label2
+     (case y' of
+         A.V y  -> tell $ printf "\t%s\t%s, %s, %s\n"                   brf x y label2
+         A.C i  -> tell $ printf "\t%s\t%s, %d, %s\n"                   brf x i label2
+       )
      writeE Tail e1                                                     -- write e1
      tell $ printf "%s:\n"                                              label2
      ((sts1,stm1), c) <- get             -- but keep counting (and stm??)
      put ((sts0,stm1), c)
      writeE Tail e2                                                     -- write e2
     
-ifNonTail :: I.Id->I.Id -> A.T->A.T -> String->String -> I.Id -> EmitMonad ()
-ifNonTail x y e1 e2 brt brf dest =
+ifNonTail :: I.Id->A.IdOrIm -> A.T->A.T -> String->String -> I.Id -> EmitMonad ()
+ifNonTail x y' e1 e2 brt brf dest =
   do label1 <- genNewLabel "cont"
      label2 <- genNewLabel brf
      ((sts0, stm0), _) <- get             -- backup stack
-     tell $ printf "\t%s\t%s, %s, %s\n"                                 brf x y label2
+     (case y' of
+         A.V y  -> tell $ printf "\t%s\t%s, %s, %s\n"                   brf x y label2
+         A.C i  -> tell $ printf "\t%s\t%s, %d, %s\n"                   brf x i label2
+       )     
      writeE (NonTail dest) e1                                           -- write e1
      ((sts1, stm1), c) <- get
      tell $ printf "\t%s\t%s\n"                                         "j" label1

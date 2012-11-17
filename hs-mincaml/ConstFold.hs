@@ -24,6 +24,7 @@ g cEnv exp =
       K.Var x  | memTuple x -> K.Tuple (findTuple x)
       K.Neg x  | memInt   x -> K.Int   ( - (findInt x))
       K.FNeg x | memFloat x -> K.Float ( - (findFloat x))
+      K.Fabs x | memFloat x -> K.Float ( abs (findFloat x))      
       K.Sqrt x | memFloat x -> K.Float ( sqrt (findFloat x))      
       K.Add x1 x2 | memInt x1 && memInt x2 -> K.Int $ (+) (findInt x1) (findInt x2)
       K.Sub x1 x2 | memInt x1 && memInt x2 -> K.Int $ (-) (findInt x1) (findInt x2)
@@ -37,10 +38,20 @@ g cEnv exp =
       K.FSub x1 x2  | memFloat x1 && memFloat x2 -> K.Float $ (-) (findFloat x1) (findFloat x2)
       K.FMul x1 x2  | memFloat x1 && memFloat x2 -> K.Float $ (*) (findFloat x1) (findFloat x2)
       K.FDiv x1 x2  | memFloat x1 && memFloat x2 -> K.Float $ (/) (findFloat x1) (findFloat x2)
+   -- notの展開 --------
+      K.IfEq x1 x2 e1 e2 | memIfLe x1 && memInt x2 && (findInt x2 == 1) -> 
+        let !_ = DT.trace ("ConstFold: OptIf-ifle"++(show x1)) () in
+        g cEnv $ K.IfLe x' y' e2 e1
+       where K.IfLe x' y' (K.Int 0) (K.Int 1) = findIfLe x1
+      K.IfEq x1 x2 e1 e2 | memIfEq x1 && memInt x2 && (findInt x2 == 1) ->
+        let !_ = DT.trace ("ConstFold: OptIf-ifeq"++(show x1)) () in
+        g cEnv $ K.IfEq x' y' e2 e1
+       where K.IfEq x' y' (K.Int 0) (K.Int 1) = findIfEq x1
+   ---------------------
       K.IfEq x1 x2 e1 e2 | memInt x1 && memInt x2 -> if (findInt x1) == (findInt x2) then (g cEnv e1) else (g cEnv e2)
       K.IfLe x1 x2 e1 e2 | memInt x1 && memInt x2 -> if (findInt x1) <= (findInt x2) then (g cEnv e1) else (g cEnv e2)
       K.IfEq x1 x2 e1 e2 | memFloat x1 && memFloat x2 -> if (findFloat x1) == (findFloat x2) then (g cEnv e1) else (g cEnv e2)
-      K.IfLe x1 x2 e1 e2 | memFloat x1 && memFloat x2 -> if (findFloat x1) <= (findFloat x2) then (g cEnv e1) else (g cEnv e2)      
+      K.IfLe x1 x2 e1 e2 | memFloat x1 && memFloat x2 -> if (findFloat x1) <= (findFloat x2) then (g cEnv e1) else (g cEnv e2)
       K.IfEq x1 x2 e1 e2 -> K.IfEq x1 x2 (g cEnv e1) (g cEnv e2)
       K.IfLe x1 x2 e1 e2 -> K.IfLe x1 x2 (g cEnv e1) (g cEnv e2)
       K.Let (x,t) e1 e2  -> K.Let (x,t) e1' e2'
@@ -73,3 +84,15 @@ g cEnv exp =
       findTuple x = case Mp.lookup x cEnv of
         Just (K.Tuple ts) -> ts
         _                 -> error ((show __FILE__)++(show __LINE__))
+      memIfLe x = case Mp.lookup x cEnv of
+        Just (K.IfLe _ _ (K.Int 0) (K.Int 1))   -> True
+        _                                       -> False
+      findIfLe x = case Mp.lookup x cEnv of
+        Just (exp@(K.IfLe _ _ (K.Int 0) (K.Int 1)))     -> exp
+        _                                               -> error ((show __FILE__)++(show __LINE__))
+      memIfEq x = case Mp.lookup x cEnv of
+        Just (K.IfEq _ _ (K.Int 0) (K.Int 1))   -> True
+        _                                       -> False
+      findIfEq x = case Mp.lookup x cEnv of
+        Just (exp@(K.IfEq _ _ (K.Int 0) (K.Int 1)))     -> exp
+        _                                               -> error ((show __FILE__)++(show __LINE__))        

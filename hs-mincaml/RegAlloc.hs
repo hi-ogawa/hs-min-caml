@@ -86,12 +86,6 @@ gErr dest cont regEnv exp = case exp of
   A.Sub x y'     -> do{ xr  <- myFind x T.Int regEnv 
                       ; yr' <- myFind' y' regEnv 
                       ; return (A.Ans $ A.Sub xr yr', regEnv)} 
-  -- A.Mul x y'     -> do{ xr  <- myFind x T.Int regEnv 
-  --                     ; yr' <- myFind' y' regEnv 
-  --                     ; return (A.Ans $ A.Mul xr yr', regEnv)} 
-  -- A.Div x y'     -> do{ xr  <- myFind x T.Int regEnv 
-  --                     ; yr' <- myFind' y' regEnv 
-  --                     ; return (A.Ans $ A.Div xr yr', regEnv)} 
   A.SLL x i      -> do{ xr  <- myFind x T.Int regEnv 
                       ; return (A.Ans $ A.SLL xr i, regEnv)} 
   A.SRA x i      -> do{ xr  <- myFind x T.Int regEnv 
@@ -104,12 +98,13 @@ gErr dest cont regEnv exp = case exp of
                       ; zr' <- myFind' z' regEnv                   
                       ; return (A.Ans $ A.St xr yr zr', regEnv)}
   A.FMov x        -> do{ xr  <- myFind x T.Float regEnv
---                       ; when (not $ elem xr A.fRegs) (error (show __FILE__ ++ show __LINE__))
                        ; return (A.Ans $ A.FMov xr, regEnv)}
   A.FNeg x        -> do{ xr  <- myFind x T.Float regEnv
                        ; return (A.Ans $ A.FNeg xr, regEnv)}  
+  A.Fabs x        -> do{ xr  <- myFind x T.Float regEnv
+                       ; return (A.Ans $ A.Fabs xr, regEnv)}  
   A.Sqrt x        -> do{ xr  <- myFind x T.Float regEnv
-                       ; return (A.Ans $ A.Sqrt xr, regEnv)}                       
+                       ; return (A.Ans $ A.Sqrt xr, regEnv)}
   A.FAdd x y     -> do{ xr  <- myFind x T.Float regEnv 
                       ; yr  <- myFind y T.Float regEnv 
                       ; return (A.Ans $ A.FAdd xr yr, regEnv)}
@@ -129,12 +124,15 @@ gErr dest cont regEnv exp = case exp of
                        ; yr  <- myFind y T.Int regEnv              
                        ; zr' <- myFind' z' regEnv                    
                        ; return (A.Ans $ A.StF xr yr zr', regEnv)}
-  A.IfEq  x y e1 e2 -> do{ xr  <- myFind x T.Int regEnv 
-                         ; yr  <- myFind y T.Int regEnv              
-                         ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfEq xr yr e1' e2') e1 e2 }
-  A.IfLe  x y e1 e2 -> do{ xr  <- myFind x T.Int regEnv 
-                         ; yr  <- myFind y T.Int regEnv              
-                         ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfLe xr yr e1' e2') e1 e2 }
+  A.IfEq  x y' e1 e2 -> do{ xr  <- myFind x T.Int regEnv 
+                          ; yr' <- myFind' y' regEnv              
+                          ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfEq xr yr' e1' e2') e1 e2 }
+  A.IfLe  x y' e1 e2 -> do{ xr  <- myFind x T.Int regEnv 
+                          ; yr' <- myFind' y' regEnv
+                          ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfLe xr yr' e1' e2') e1 e2 }
+  A.IfGe  x y' e1 e2 -> do{ xr  <- myFind x T.Int regEnv 
+                          ; yr' <- myFind' y' regEnv
+                          ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfGe xr yr' e1' e2') e1 e2 }
   A.IfFEq  x y e1 e2 -> do{ xr  <- myFind x T.Float regEnv 
                           ; yr  <- myFind y T.Float regEnv              
                           ; gErrIf dest cont regEnv exp (\e1' e2' -> A.IfFEq xr yr e1' e2') e1 e2 }
@@ -196,10 +194,6 @@ myFind' (A.V x) regEnv = do xr <- myFind x T.Int regEnv    -- throwError
                             return $ A.V xr
 alloc :: (I.Id, T.T) -> A.T -> RegEnv -> I.Id -> T.T -> AllocRes
 alloc dest cont regEnv x t = 
-  -- let !_ = if x == "w.5140"
-  --          then DT.trace ("alloc:"++(show x)++",prefer:"++(show prefer)++",dest:"++(show dest)) ()
-  --          else ()
-  -- in 
   if t == T.Unit          then Alloc "$g0"             else
     if A.isReg x          then Alloc x                 else
       if allocables /= [] then Alloc (head allocables) else Spill (head spilables)
@@ -243,6 +237,9 @@ targetExp src (destx, t) exp =
       where (c1, rs1) = targetE src (destx, t) e1
             (c2, rs2) = targetE src (destx, t) e2
     A.IfLe _ _ e1 e2                     -> (c1 && c2, rs1 ++ rs2)
+      where (c1, rs1) = targetE src (destx, t) e1
+            (c2, rs2) = targetE src (destx, t) e2
+    A.IfGe _ _ e1 e2                     -> (c1 && c2, rs1 ++ rs2)
       where (c1, rs1) = targetE src (destx, t) e1
             (c2, rs2) = targetE src (destx, t) e2
     A.IfFEq _ _ e1 e2                     -> (c1 && c2, rs1 ++ rs2)

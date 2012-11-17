@@ -156,7 +156,7 @@ in
 (*NOMINCAML open Globals;;*)
 (*(*MINCAML*) let true = 1 in 
 (*MINCAML*) let false = 0 in *)
-(*MINCAML*) let rec xor x y = if x then not y else y in
+(* (\*MINCAML*\) let rec xor x y = if x then not y else y in *)
 
 (******************************************************************************
    ユーティリティー

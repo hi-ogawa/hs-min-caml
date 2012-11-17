@@ -24,7 +24,8 @@ import qualified RegAlloc as R
 import qualified Emit as E
 import qualified ArgHandle as Arg
 
-{-Prelude> :set -package data-binary-ieee754-}
+{- Prelude> :set -package data-binary-ieee754 -}
+{- Prelude> :set -XBangPatterns -}
 import System.Environment as Sys
 import qualified Data.Map as Mp
 import Control.Exception
@@ -59,9 +60,9 @@ compile name iter limit =
 showTest :: Command -> FilePath -> Int -> Int -> IO ()       
 showTest com name iter limit =
   do contents <- readFile (name++".ml")
-     libml    <- readFile libmlPath
-     case test com iter limit (libml++contents) of       
-     -- case test com iter limit contents of              
+     -- libml    <- readFile libmlPath
+     -- case test com iter limit (libml++contents) of       
+     case test com iter limit contents of              
        Right st         -> putStr st
        Left  msg        -> putStr $ "ERROR: "++msg
       
@@ -81,27 +82,24 @@ test com iter limit contents =
       if com == 3 then return $ show alphaExp else do          
         
       let !_ = DT.trace ("iter start...") ()                 
-      let (iteredExp, c2)              =  loopIter iter c1 limit alphaExp
+      let (iteredExp, c2)              =  loopIter iter c1 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
+      -- let (iteredExp, c2)              =  loopIter iter c1 limit alphaExp
       if com == 4 then return $ show iteredExp else do
         
       let gloTup                        = G.globalMain iteredExp
       if com == 5 then return $ show gloTup else do          
         
       let (cloExp, fundefs0)          =  C.closMain gloTup iteredExp 
-      -- if com == 6  then return $ (show cloExp)++(show fundefs0) else do
-      if com == 6  then return $ take 30000 (show cloExp) else do        
+      if com == 6  then return $ (show cloExp)++(show fundefs0) else do
 
       let ((virExp, fundefs1), c3) = V.virtMain gloTup (cloExp, reverse fundefs0) c2
-      -- if com == 7 then return $ (show virExp)++(show fundefs1) else do
-      if com == 7 then return  $ take 30000 (show virExp) else do        
+      if com == 7 then return $ (show virExp)++(show fundefs1) else do
               
       let (simmExp, fundefs2)          =  SI.simmMain (virExp, fundefs1)
-      -- if com == 8 then return $ (show simmExp)++(show fundefs2) else do
-      if com == 8 then return $ take 30000 (show simmExp) else do        
+      if com == 8 then return $ (show simmExp)++(show fundefs2) else do
         
       let (prog@(regExp, fundefs3), c4) =  R.regAllocMain (simmExp, fundefs2) c3
-      -- if com == 9 then return $ (show regExp)++(show fundefs3) else do          
-      if com == 9 then return $ take 30000 (show regExp) else do
+      if com == 9 then return $ (show regExp)++(show fundefs3) else do          
         
       let output                      =  E.emitMain (G.offset gloTup) prog c4
       return $ output
@@ -114,7 +112,8 @@ loopIter n c limit exp =
   if n > 0 && exp /= exp''
   then loopIter (n-1) c' limit exp''
   else (exp, c)
-  -- where (exp', c') = IN.inlineMain (AS.assocMain $ B.betaMain $ EE.elimEqExpMain exp) limit c
+  -- else let lastExp = EL.elimMain $ B.betaMain $ EE.elimEqExpMain exp 
+  --      in (lastExp, c)
   where (exp', c') = IN.inlineMain (AS.assocMain $ B.betaMain exp) limit c 
         exp''      = EL.elimMain $ CO.constMain exp'
 

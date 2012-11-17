@@ -18,14 +18,13 @@ data Exp =
   | Neg  I.Id
   | Add  I.Id IdOrIm
   | Sub  I.Id IdOrIm
-  -- | Mul  I.Id IdOrIm
-  -- | Div  I.Id IdOrIm
   | SLL  I.Id Int
   | SRA  I.Id Int
   | Ld   I.Id IdOrIm
   | St   I.Id I.Id IdOrIm
   | FMov I.Id
   | FNeg I.Id
+  | Fabs I.Id    
   | Sqrt I.Id    
   | FAdd I.Id I.Id 
   | FSub I.Id I.Id 
@@ -33,10 +32,11 @@ data Exp =
   | FDiv I.Id I.Id 
   | LdF  I.Id IdOrIm
   | StF  I.Id I.Id IdOrIm
-  | IfEq I.Id I.Id T T 
-  | IfLe I.Id I.Id T T
+  | IfEq I.Id IdOrIm T T 
+  | IfLe I.Id IdOrIm T T
+  | IfGe I.Id IdOrIm T T        -- ifgtはsimmで出てくるだけ
   | IfFEq I.Id I.Id T T 
-  | IfFLe I.Id I.Id T T 
+  | IfFLe I.Id I.Id T T
   | CallCls I.Id    [I.Id] [I.Id]
   | CallDir I.Label [I.Id] [I.Id]
   | Save I.Id I.Id       -- Save "$ri" "n" ==>> レジスタriをスタック変数nに退避
@@ -51,7 +51,7 @@ iRegs  :: [I.Id]
 iRegs  = map (\i -> "$r"++(show i)) [2..28]
   
 fRegs :: [I.Id]
-fRegs = map (\i -> "$f"++(show i)) [0..31]
+fRegs = map (\i -> "$f"++(show i)) [0..26]
   
 regZr = "$r0"
 regFr = "$r1"   -- アセンブリ用
@@ -60,7 +60,11 @@ regCl = "$r28"
 regSp = "$r29"
 regHp = "$r30"
 regRa = "$r31"
-regSwF= "$f31"
+
+regSwF= "$f26"
+regMiOneF= "$f29"
+regZrF= "$f30"
+regOneF= "$f31"
 
 isReg :: I.Id -> Bool
 isReg id | (take 2 id) == "$r" = True
@@ -92,14 +96,13 @@ freeVarExp exp = case exp of
   Neg  x                -> [x]
   Add  x y'             -> x:(freeIdIm y')
   Sub  x y'             -> x:(freeIdIm y')
-  -- Mul  x y'             -> x:(freeIdIm y')
-  -- Div  x y'             -> x:(freeIdIm y')
   SLL  x i              -> [x]
   SRA  x i              -> [x]
   Ld   x y'             -> x:(freeIdIm y')
   St   x y z'           -> x:y:(freeIdIm z')
   FMov x                -> [x]
   FNeg x                -> [x]
+  Fabs x                -> [x]  
   Sqrt x                -> [x]  
   FAdd x y              -> [x,y]
   FSub x y              -> [x,y]
@@ -107,8 +110,9 @@ freeVarExp exp = case exp of
   FDiv x y              -> [x,y]
   LdF  x y'             -> x:(freeIdIm y')
   StF  x y z'           -> x:y:(freeIdIm z')
-  IfEq x y e1 e2        -> x:y:(nub $ (freeVar e1) ++ (freeVar e2))
-  IfLe x y e1 e2        -> x:y:(nub $ (freeVar e1) ++ (freeVar e2))
+  IfEq x y' e1 e2       -> x:((freeIdIm y')++(nub $ (freeVar e1) ++ (freeVar e2)))
+  IfLe x y' e1 e2       -> x:((freeIdIm y')++(nub $ (freeVar e1) ++ (freeVar e2)))
+  IfGe x y' e1 e2       -> x:((freeIdIm y')++(nub $ (freeVar e1) ++ (freeVar e2)))  
   IfFEq x y e1 e2       -> x:y:(nub $ (freeVar e1) ++ (freeVar e2))
   IfFLe x y e1 e2       -> x:y:(nub $ (freeVar e1) ++ (freeVar e2))
   CallCls x ys zs       -> x:(ys ++ zs)
@@ -154,12 +158,11 @@ printAsm exp dep =
       Mov  x      -> "Mov: " ++(show x)++"\n"
       Neg  x      -> "Neg: " ++(show x)++"\n"
       FNeg x      -> "FNeg: "++(show x)++"\n"
+      Fabs x      -> "Fabs: "++(show x)++"\n"      
       Sqrt x      -> "Sqrt: "++(show x)++"\n"      
       FMov x      -> "FMov: "++(show x)++"\n"
       Add x1 x2   -> "Add: "++(show x1)++", "++(show x2)++"\n"
       Sub x1 x2   -> "Sub: "++(show x1)++", "++(show x2)++"\n"
-      -- Mul x1 x2   -> "Mul: "++(show x1)++", "++(show x2)++"\n"
-      -- Div x1 x2   -> "Div: "++(show x1)++", "++(show x2)++"\n"
       SLL x1 i    -> "SLL: "++(show x1)++", "++(show i)++"\n"
       SRA x1 i    -> "SRA: "++(show x1)++", "++(show i)++"\n"
       Ld  x1 x2   -> "Ld : "++(show x1)++", "++(show x2)++"\n"
@@ -174,9 +177,11 @@ printAsm exp dep =
                              ++(printE e1)++(printE e2)
       IfLe x1 x2 e1 e2    -> "IfLe: "++(show x1)++", "++(show x2)++"\n"
                              ++(printE e1)++(printE e2)
-      IfFEq x1 x2 e1 e2   -> "IfEq: "++(show x1)++", "++(show x2)++"\n"
+      IfGe x1 x2 e1 e2    -> "IfGe: "++(show x1)++", "++(show x2)++"\n"
+                             ++(printE e1)++(printE e2)                             
+      IfFEq x1 x2 e1 e2   -> "IfFEq: "++(show x1)++", "++(show x2)++"\n"
                              ++(printE e1)++(printE e2)
-      IfFLe x1 x2 e1 e2   -> "IfLe: "++(show x1)++", "++(show x2)++"\n"
+      IfFLe x1 x2 e1 e2   -> "IfFLe: "++(show x1)++", "++(show x2)++"\n"
                              ++(printE e1)++(printE e2)
       CallCls x is fs     -> "CallCls: "++(show x)++", args: "++(concatMap (\s -> (show s)++", ") (is++fs))++"\n"
       CallDir x is fs     -> "CallDir: "++(show x)++", args: "++(concatMap (\s -> (show s)++", ") (is++fs))++"\n"

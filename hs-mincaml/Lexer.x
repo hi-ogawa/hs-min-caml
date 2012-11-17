@@ -4,6 +4,7 @@ module Lexer where
 import Data.List(isInfixOf, elemIndex)
 import Control.Exception(assert)
 import qualified Debug.Trace as DT
+import Data.Char (chr)  -- ord は alexでimportされる
 }
 
 %wrapper "monad"
@@ -44,6 +45,18 @@ $white+		;
 ">="		{ mkT GREATER_EQUAL }
 \<		{ mkT LESS }
 \>		{ mkT GREATER }
+"->"		{ mkT MINUS_GREATER }
+-- expansion----
+"fun"		{ mkT FUN }
+-- 組み込み関数--
+"fequal"        { mkT FEQUAL }
+"fless"         { mkT FLESS     }
+"fispos"        { mkT FISPOS    }
+"fisneg"        { mkT FISNEG    }
+"fiszero"       { mkT FISZERO   }
+"xor"           { mkT XOR       }
+"fabs"		{ mkT FABS	}
+----------------
 "sqrt"		{ mkT SQRT }
 "if"		{ mkT IF }
 "then"		{ mkT THEN }
@@ -62,12 +75,10 @@ $white+		;
 {
 -- action型の生成
 mkT :: Token -> AlexInput -> Int -> Alex (TokenAndPos)
-mkT tok (p,_,str) len = do --let !debug = DT.trace (show $ take len str) ""
-                           return $ (p, tok)
+mkT tok (p,_,_,str) len = return $ (p, tok)
 
 mkTL :: (b -> Token) -> (String -> b) -> AlexInput -> Int -> Alex (TokenAndPos)
-mkTL tokGen f (p,_,str) len = do --let !debug = DT.trace (show $ take len str) ""
-                                 return $ (p, tokGen $ f (take len str))
+mkTL tokGen f (p,_,_,str) len = return $ (p, tokGen $ f (take len str))
   
 -- (StateT AlexState Either a)的なモナド  
 -- newtype Alex a = Alex { unAlex :: AlexState -> Either String (AlexState, a) }  
@@ -101,9 +112,9 @@ mainFromFile name = fmap mainLex $ readFile name
 alexEOF = return (undefined, EOF)
 
 -- error処理
-showPosn (AlexPn _ line col) = show line ++ ':': show col  
-lexError s = do (AlexPn _ line col,c,input) <- alexGetInput
-                alexError ("("++(show line)++", "++(show col)++") - "++ s ++ 
+showPosn (AlexPn _ line col) = "("++(show line)++ ", "++(show col)++")"
+lexError s = do (pos, _, _, input) <- alexGetInput
+                alexError ((showPosn pos)++" - "++ s ++ 
                            (if null input
                             then " at end of file"                       
                             else " before " ++ (show $ head input)))
@@ -114,23 +125,27 @@ nested_comment _ _ = do input <- alexGetInput
                         go 1 input
   where go 0 input = do alexSetInput input; alexMonadScan
 	go n input = do
-	  case alexGetChar input of     -- ひたすらgetChar('*' or '(' がでるまで)
-	    Nothing  -> err input
-	    Just (c,input) -> do
-	      case c of
-	    	'*' -> do
-		  case alexGetChar input of
-		    Nothing  -> err input
-		    Just (')',input) -> go (n-1) input
-		    Just (c,input')   -> go n input
+	  case alexGetByte input of     -- ひたすらgetChar('*' or '(' がでるまで)
+	    Nothing             -> err input
+	    Just (b,input)      -> do
+	      case word8ToChar b of
+	    	'*' -> do 
+		  case alexGetByte input of
+		    Nothing             -> err input
+		    Just (b, input') -> do 
+                      case word8ToChar b of
+                        ')'     -> go (n-1) input'
+                        _       -> go n     input       -- ここ重要
 	     	'(' -> do
-		  case alexGetChar input of
-		    Nothing  -> err input
-		    Just ('*',input) -> go (n+1) input
-		    Just (c,input)   -> go n input
-	    	c -> go n input
-        err input = do alexSetInput input; lexError "error in nested comment"  
-
+		  case alexGetByte input of
+		    Nothing         -> err input
+		    Just (b, input') -> do
+                      case word8ToChar b of
+                        '*'     -> go (n+1) input'
+                        _       -> go n     input
+	    	_ -> go n input
+        err input = do alexSetInput input; lexError "error in nested comment"
+        word8ToChar = chr.fromIntegral
 
 ---------token 定義-----------------
 type TokenAndPos = (AlexPosn, Token)
@@ -143,6 +158,7 @@ data Token = INT Int
            | PLUS_DOT  | MINUS_DOT  | AST_DOT  | SLASH_DOT 
            | EQUAL  | LESS_GREATER  | LESS_EQUAL  | GREATER_EQUAL  
            | LESS  | GREATER 
+	   | FUN  | MINUS_GREATER
            | SQRT
            | NOT 
            | DOT  | LESS_MINUS 
@@ -153,6 +169,8 @@ data Token = INT Int
            | COMMA
            | LPAREN | RPAREN 
            | EOF 
+           | FEQUAL | FLESS | FISPOS | FISNEG | FISZERO | XOR
+	   | FABS
            deriving (Show, Eq)
                     
 ----parserで使う

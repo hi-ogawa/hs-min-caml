@@ -82,7 +82,7 @@ memInt :: IntEnv -> I.Id -> Bool
 memInt intEnv x = 
   case Mp.lookup x intEnv of
     Just (K.Int _)      -> True
-    Nothing             -> False
+    _                   -> False
   
 modiEnv :: I.Id -> T.T -> GloState ()
 modiEnv x t = do (a,b,c,d) <- get

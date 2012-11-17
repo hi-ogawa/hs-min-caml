@@ -38,6 +38,18 @@ not     { NOT }
 ">"	{ GREATER }
 "."	{ DOT }
 "<-"	{ LESS_MINUS }
+"->"	{ MINUS_GREATER }
+-- expansion --
+"fun"	{ FUN }
+-- 組み込み   --
+"fequal"        { FEQUAL }
+"fless"         { FLESS }
+"fispos"        { FISPOS }
+"fisneg"        { FISNEG }
+"fiszero"       { FISZERO }
+"xor"           { XOR }
+"fabs"		{ FABS }
+---------------
 "sqrt"  { SQRT }
 if	{ IF }
 then	{ THEN }
@@ -61,7 +73,7 @@ array	{ ARRAY }
 %left "+" "-" "+." "-."
 %left "*" "/" "*." "/."
 %right P_NEG
-%left P_APP "sqrt"
+%left P_APP "sqrt" "fequal" "fless" "fispos" "fisneg" "fiszero" "xor" "fabs"
 %left "."
 
 %%
@@ -71,8 +83,6 @@ E :: { S.T }
         | not E                 { S.Not $2 }
 	| E "+" E		{ S.Add $1 $3 }	
 	| E "-" E		{ S.Sub $1 $3 }	
-	-- | E "*" E		{ S.Mul $1 $3 }	
-	-- | E "/" E		{ S.Div $1 $3 }	
 	| E "*" E		{ sllOrMul $1 $3 }	
 	| E "/" E		{ sraOrDiv $1 $3 }	          
 	| E "+." E		{ S.FAdd $1 $3 }	
@@ -85,20 +95,34 @@ E :: { S.T }
 	| E ">=" E		{ S.Le $3 $1 }	
 	| E "<" E		{ S.Not (S.Le $3 $1) }	
 	| E ">" E		{ S.Not (S.Le $1 $3) }	
+        -- 組み込み --          
+        | "fequal" SimpleE SimpleE	{ S.Eq $2 $3 }
+        | "fless"  SimpleE SimpleE      { S.Not (S.Le $3 $2) }
+        | "fispos" SimpleE              { S.Not (S.Le $2 (S.Float 0.0)) }
+        | "fisneg" SimpleE              { S.Not (S.Le (S.Float 0.0) $2) }
+        | "fiszero"SimpleE              { S.Eq $2 (S.Float 0.0) }
+        | "xor"    SimpleE SimpleE      { S.Not (S.Eq $2 $3) }
+	| "fabs"   SimpleE		{ S.Fabs $2 }
+        -- expansion --
+        | "fun" FormArgE "->" E {% do{ newf <- genNewId
+                                     ; newt <- genTypeVar
+                                     ; return $ S.LetRec S.Fundef{S.name=(newf,newt), S.args=$2, S.body=$4} (S.Var newf)} }
         | "sqrt" E              { S.Sqrt $2 }
 	| "-" E %prec P_NEG	{ negOrFneg $2 }
 	| "-." E %prec P_NEG	{ S.FNeg $2 }
         | if E then E else E %prec P_IF     { S.If $2 $4 $6 }
-	| let id "=" E in E %prec P_LET   	{% do{ i <- genTypeVar
-                                                     ; return $ S.Let ($2, T.Var i) $4 $6} }
+	| let id "=" E in E %prec P_LET   	{% do{ newt <- genTypeVar
+                                                     ; return $ S.Let ($2, newt) $4 $6} }
 	| let rec FundefE in E %prec P_LET    { S.LetRec $3 $5 }
 	| E ActArgE %prec P_APP               { S.App $1 $2 }
 	| SimpleE "." "(" E ")" "<-" E	{ S.Put $1 $4 $7 }
         | ElemsE                              { S.Tuple $1 }
         | let "(" PatE ")" "=" E in E     { S.LetTuple $3 $6 $8}
-	| E ";" E		{% do{ i <- genTypeVar
-                                     ; return $ S.Let ("_", T.Var i) $1 $3 }}
+	| E ";" E		{% do{ newt <- genTypeVar
+                                     ; return $ S.Let ("_", newt) $1 $3 }}
         | array SimpleE SimpleE	{ S.Array $2 $3 }
+
+
           
 SimpleE :: { S.T }
 	: "(" E ")"		{ $2 }
@@ -110,16 +134,16 @@ SimpleE :: { S.T }
 	| SimpleE "." "(" E ")"	{ S.Get $1 $4 }
 
 FundefE :: { S.Fundef }
-        : id FormArgE "=" E	{% do{ i <- genTypeVar
-                                     ; return $ S.Fundef ($1, T.Var i) $2 $4 }}
+        : id FormArgE "=" E	{% do{ newt <- genTypeVar
+                                     ; return $ S.Fundef ($1, newt) $2 $4 }}
 
 FormArgE :: { [(I.Id, T.T)] }
-	: "(" ")"		{% do{ i <- genTypeVar
-                                     ; return $ [("unit", T.Var i)]}}
-	| id FormArgE		{% do{ i <- genTypeVar
-                                     ; return $ ($1, T.Var i) : $2 }}
-	| id			{% do{ i <- genTypeVar
-                                     ; return $ [($1, T.Var i)] }}
+	: "(" ")"		{% do{ newt <- genTypeVar
+                                     ; return $ [("unit", newt)]}}
+	| id FormArgE		{% do{ newt <- genTypeVar
+                                     ; return $ ($1, newt) : $2 }}
+	| id			{% do{ newt <- genTypeVar
+                                     ; return $ [($1, newt)] }}
 
 ActArgE :: { [S.T] }
 	: ActArgE SimpleE %prec P_APP	{ $1 ++ [$2] }
@@ -130,32 +154,37 @@ ElemsE :: { [S.T] }
         | E "," E               { [$1, $3] }          
           
 PatE :: { [(I.Id, T.T)] }
-        : PatE "," id   {% do{ i <- genTypeVar
-                             ; return $ $1 ++ [($3, T.Var i)] }}
-        | id "," id     {% do{ i1:i2:[] <- sequence $ take 2 $ repeat genTypeVar
-                             ; return $ [($1, T.Var i1), ($3, T.Var i2)]}}
+        : PatE "," id   {% do{ newt <- genTypeVar
+                             ; return $ $1 ++ [($3, newt)] }}
+        | id "," id     {% do{ newt1 <- genTypeVar
+                             ; newt2 <- genTypeVar
+                             ; return $ [($1, newt1), ($3, newt2)]}}
 
 {
 -- parser :: [Token] -> ParseState S.T  
   
-type ParseState = ErrorT String (State (Int, [L.AlexPosn]))
+type ParseState = ErrorT String (State (T.TypeN, I.Counter, [L.AlexPosn]))
   
 parseError :: [L.Token] -> ParseState a
-parseError toks = do{ (_, poss) <- get
+parseError toks = do{ (_, _, poss) <- get
                     ; let AlexPn _ li co = last $ take (length toks) (reverse poss)
                     ; throwError $ "parseError: "++"("++(show li)++", "++(show co)++")"}
 
-genTypeVar :: ParseState Int
-genTypeVar = do{ (i, poss) <- get
-               ; put (i+1, poss)
-               ; return (i+1) }
+genTypeVar :: ParseState T.T
+genTypeVar = do{ (i1, i2, poss) <- get
+               ; put (i1+1, i2, poss)
+               ; return $ T.Var (i1+1) }
+genNewId :: ParseState I.Id      -- lambda抽象の名前付け
+genNewId = do{ (i1, i2, poss) <- get
+             ; put (i1, i2+1, poss)
+             ; return (".lamb"++(show (i2+1))) }
 
 scanAndParse :: String -> Either String (S.T, T.TypeN)
 scanAndParse input = 
   do (poss, tokens) <- fmap unzip (L.mainLex input)
-     case runState (runErrorT (parser $ tokens)) (0, poss) of
+     case runState (runErrorT $ parser tokens) (0, 0, poss) of
        (Left msg,  _ ) -> throwError msg
-       (Right exp, (lastN, _)) -> return (exp, lastN)
+       (Right exp, (lastN, _, _)) -> return (exp, lastN)
        
 ---- mul, div => sll, sra ----       
 
