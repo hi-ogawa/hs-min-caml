@@ -20,7 +20,8 @@ string assemName[INSTNUM] = { "HALT","AND","ADDU","SUBU","SLT","LW","SW","BEQ","
 			    ,"ADDI","ORI","SLL","SRA","LUI","JR","INPUT","OUTPUT"
 			    ,"J","JAL","ADDS","SUBS","MULS","DIVS","FMOVE","FNEG"
 			    ,"CEQS","CLES","LFL","LFH","LWCL","SWCL","BCLT"
-			    ,"BCLF","SQRT"};
+			    ,"BCLF","SQRT" 
+			      ,"SLTI","SGTI","BNEI", "LWR", "SWR", "LWCLR", "SWCLR", "FABS"};
 
 extern bool cont;
 extern FILE* inputFile;
@@ -167,7 +168,7 @@ void execInst(inst nowi){
     cerr << nowi.line;
     cerr <<"name:"<< nowi.name <<", rs:"<< nowi.rs;
     cerr <<", rt:"<< nowi.rt <<",rd:"<< nowi.rd;
-    cerr <<", sham:"<< nowi.sh <<", imme:"<< nowi.im << endl;
+    cerr <<", sham:"<< nowi.sh <<", imme:"<< nowi.im <<", im2:"<< nowi.im2<< endl;
   }
   pcStatistics[pc] = pcStatistics[pc] + 1;
   inst_num ++;
@@ -195,6 +196,18 @@ void execInst(inst nowi){
     if(ireg[nowi.rs] < ireg[nowi.rt]) ireg[nowi.rd] = 1;
     else ireg[nowi.rd] = 0;
   }
+  // 追加 //
+  else if(nowi.op == 0x0 && nowi.fu == 0x2b){//nowi.name == "slti"
+    instStatistics[SLTI] ++;
+    if(ireg[nowi.rs] < nowi.im) ireg[nowi.rt] = 1;
+    else ireg[nowi.rt] = 0;
+  }
+  else if(nowi.op == 0x0 && nowi.fu == 0x2c){//nowi.name == "sgti"
+    instStatistics[SGEI] ++;
+    if(ireg[nowi.rs] > nowi.im) ireg[nowi.rt] = 1;
+    else ireg[nowi.rt] = 0;
+  }
+
 
   else if(nowi.op == 0x23){//nowi.name == "lw"
     instStatistics[LW] ++;
@@ -222,6 +235,33 @@ void execInst(inst nowi){
       cerr << ", addr: " << addr << endl;
     }
   }
+  // 追加 //
+  else if(nowi.op == 0x24){//nowi.name == "lwr"
+    instStatistics[LWR] ++;
+    int addr = ireg[nowi.rt] + ireg[nowi.rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ireg[nowi.rd] = ram[addr/4];
+    }
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << nowi.line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
+  }
+  else if(nowi.op == 0x2c){	//nowi.name == "swr"
+    instStatistics[SWR] ++;
+    int addr = ireg[nowi.rt] + ireg[nowi.rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ram[addr/4] = ireg[nowi.rd];
+    }
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << nowi.line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
+  }
 
   else if(nowi.op == 0x04){//nowi.name == "beq"
     instStatistics[BEQ] ++;
@@ -231,6 +271,12 @@ void execInst(inst nowi){
     instStatistics[BNE] ++;
     if(ireg[nowi.rt] != ireg[nowi.rs]) pc += nowi.im;
   }
+  // 追加 //
+  else if(nowi.op == 0x07){//nowi.name == "bnei"
+    instStatistics[BNEI] ++;
+    if(ireg[nowi.rt] != nowi.im2) pc += nowi.im;
+  }
+
 
   else if(nowi.op == 0x8){//nowi.name == "addi"
     instStatistics[ADDI] ++;
@@ -307,6 +353,10 @@ void execInst(inst nowi){
     instStatistics[FNEG] ++;
     freg[nowi.rd] = - freg[nowi.rs];
   }
+  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x7){//nowi.name == "fabs"
+    instStatistics[FABS] ++;
+    freg[nowi.rd] = fabs(freg[nowi.rs]);
+  }
 
   else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x32){//nowi.name== "c.eq.s"
     instStatistics[CEQS] ++;
@@ -333,7 +383,7 @@ void execInst(inst nowi){
   else if(nowi.op == 0x32){//nowi.name == "lfh"
     instStatistics[LFH] ++;
     conv c1;
-    c1.i = (nowi.im << 16);
+    c1.i = (nowi.im << 16);	// 下位はゼロ詰め
     freg[nowi.rt] = c1.f;
   }
 
@@ -365,6 +415,36 @@ void execInst(inst nowi){
       showRegs();
     }
   }
+  // 追加 //
+  else if(nowi.op == 0x21){//nowi.name == "lwclr"
+    instStatistics[LWCLR] ++;
+    int addr = ireg[nowi.rt] + ireg[nowi.rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      conv c1;
+      c1.i = ram[addr/4];
+      freg[nowi.rd] = c1.f;
+    }else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << nowi.line << endl;
+      showRegs();
+    }
+  }
+  else if(nowi.op == 0x29){//nowi.name == "swclr"
+    instStatistics[SWCLR] ++;
+    int addr = ireg[nowi.rt] + ireg[nowi.rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      conv c1;
+      c1.f = freg[nowi.rd];
+      ram[addr/4] = c1.i;
+    }else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << nowi.line << endl;
+      showRegs();
+    }
+  }
+
   else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x1){//nowi.name == "bclt"
     instStatistics[BCLT] ++;
     if(fpcond == 1)

@@ -23,7 +23,7 @@
 using namespace std;
 
 typedef enum{
-  I_TYPE, R_TYPE, J_TYPE, FR_TYPE, FI_TYPE,
+  I_TYPE, R_TYPE, J_TYPE, FR_TYPE, FI_TYPE, B_TYPE
 } type;
 
 typedef struct _inst{
@@ -39,6 +39,7 @@ typedef struct _inst{
   int sh;
   int fu;
   int im;
+  int im2;
   int fmt;
 } inst;
 
@@ -57,16 +58,19 @@ typedef union{
 #define formRRI "%s $r%d, $r%d, %d"	// addi, ori, sll(shamt), sra(shamt)
 #define formRRL "%s $r%d, $r%d, %s"	// beq, bne, (bgt, blt, bge, ble)
 #define formRRR "%s $r%d, $r%d, $r%d"	// addu, subu, slt
-#define formRIR "%s $r%d, %d($r%d)"	// lw, sw
-// halt命令も追加 (擬似命令として beq $r0, $r0, -4)
-// shift系はR形式だから注意
+#define formRIRM "%s $r%d, %d($r%d)"	// lw, sw
+
+#define formRRRM  "%s $r%d, $r%d($r%d)"  // lwr, swr
+#define formFrRRM "%s $f%d, $r%d($r%d)"  // lwclr, swclr
+#define formRIR "%s $r%d, %d, $r%d"	// slti, sgti
+#define formRIL "%s $r%d, %d, %s"	// bgti, bnei, blti
 
 #define formFrFrFr "%s $f%d, $f%d, $f%d"	// add.s, sub.s, mul.s, div.s
 #define formFrFr "%s $f%d, $f%d"	// fmove(F), fneg(F), c.eq.s(F), c.le.s(F),sqrt
 #define formFrI	"%s $f%d, %d"	// lfl(F), lfh(F)
-#define formFrIR "%s $f%d, %d($r%d)"	//lwcl, xwcl (float関係)
+#define formFrIRM "%s $f%d, %d($r%d)"	//lwcl, xwcl (float関係)
 
-#define INSTNUM 34
+#define INSTNUM 42
 #define HALT	0
 #define AND	1
 #define ADDU	2
@@ -101,6 +105,15 @@ typedef union{
 #define BCLT	31	
 #define BCLF	32	
 #define SQRT	33
+// 追加 //
+#define SLTI	34
+#define SGEI	35
+#define BNEI	36
+#define LWR	37
+#define SWR	38
+#define LWCLR	39
+#define SWCLR	40
+#define FABS    41
 
 void transeInstructions(void);
 

@@ -56,6 +56,8 @@ string encode_line(inst i1){
     return r_type((i1.op & 0x3f), (i1.fmt & 0x1f), (i1.rt & 0x1f), (i1.rs & 0x1f), (i1.rd & 0x1f), (i1.fu & 0x3f));
   case FI_TYPE:
     return i_type((i1.op & 0x3f), (i1.fmt & 0x1f), (i1.rt & 0x1f), (i1.im & 0xffff));
+  case B_TYPE:
+    return i_type((i1.op & 0x3f), (i1.rs & 0x1f), (i1.im2 & 0x1f), (i1.im & 0xffff));
   }
   return "";
 }

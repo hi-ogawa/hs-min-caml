@@ -1,3 +1,6 @@
+	addi	$r2, $r0, 0
+	blei	$r2, 1, .label
+	bgti	$r2, 1, .label
 	addu	$r1, $r2, $r3
 	subu	$r1, $r2, $r3
 	addi	$r1, $r2, 3

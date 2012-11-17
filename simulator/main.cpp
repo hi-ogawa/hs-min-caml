@@ -148,7 +148,7 @@ inst label_resolve(inst pre, int now){
   int addr;
 
   // relative jump
-  if( pre.name == "bne" || pre.name == "beq" || pre.name == "bclt" || pre.name == "bclf" ){
+  if( pre.name == "bne" || pre.name == "beq" || pre.name == "bclt" || pre.name == "bclf" || pre.name == "bnei" ){
 
     // labelがちゃんと登録されてるか確認
     if(labelNames.count(pre.label)){
@@ -194,6 +194,8 @@ inst label_resolve(inst pre, int now){
 vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
   int rs = 0;
   int rt = 0;
+  int im = 0;
+  int im2 = 0;
   char dummy[MAX_LINE_SIZE];
   char label[MAX_LINE_SIZE];
   inst i1, i2;
@@ -284,6 +286,38 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     cerr << "error: mnemonic, ble" << endl;
     error = true;
   }
+  else if(instName == "bgti"){
+    if(sscanf(buffer, formRIL, dummy, &rs, &im, label) == 4){
+      i1.ty = I_TYPE; i1.name = string("sgti");
+      i1.rt = 1; i1.rs = rs; i1.im = im;
+      i1.op = 0x0; i1.fu = 0x2c;
+      i2.ty = I_TYPE; i2.name = string("bne"); i2.label = string(label);
+      i2.rt = 1; i2.rs = 0;
+      i2.op = 0x5;
+
+      instVec.push_back(make_pair(i1, false));
+      instVec.push_back(make_pair(i2, true));      
+      return instVec;
+    }
+    cerr << "error: mnemonic, bgti" << endl;
+    error = true;
+  }
+  else if(instName == "blti"){
+    if(sscanf(buffer, formRIL, dummy, &rs, &im, label) == 4){
+      i1.ty = I_TYPE; i1.name = string("slti");
+      i1.rt = 1; i1.rs = rs; i1.im = im;
+      i1.op = 0x0; i1.fu = 0x2b;
+      i2.ty = I_TYPE; i2.name = string("bne"); i2.label = string(label);
+      i2.rt = 1; i2.rs = 0;
+      i2.op = 0x5;
+
+      instVec.push_back(make_pair(i1, false));
+      instVec.push_back(make_pair(i2, true));      
+      return instVec;
+    }
+    cerr << "error: mnemonic, blti" << endl;
+    error = true;
+  }
 
   // そのまんま命令(擬似命令でない命令)
   // formRRR
@@ -327,6 +361,28 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     cerr << "error: mnemonic, slt" << endl;
     error = true;
   }
+  // 追加 //
+  else if(instName == "slti"){
+    if(sscanf(buffer, formRRI, dummy, &(i1.rt), &(i1.rs), &(i1.im)) == 4){
+      i1.ty = I_TYPE; i1.name = string("slti");
+      i1.op = 0x0; i1.fu = 0x2b;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, slti" << endl;
+    error = true;
+  }
+  else if(instName == "sgti"){
+    if(sscanf(buffer, formRRI, dummy, &(i1.rt), &(i1.rs), &(i1.im)) == 4){
+      i1.ty = I_TYPE; i1.name = string("sgti");
+      i1.op = 0x0; i1.fu = 0x2c;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, sgti" << endl;
+    error = true;
+  }
+
   
   // formRRI
   else if(instName == "addi"){
@@ -391,10 +447,21 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     cerr << "error: mnemonic, bne" << endl;
     error = true;
   }
+  // 追加 //
+  else if(instName == "bnei"){
+    if(sscanf(buffer, formRIL, dummy, &(i1.rt), &im2, label) == 4){
+      i1.ty = B_TYPE; i1.name = string("bnei"); i1.label = string(label);
+      i1.op = 0x07; i1.im2 = im2;
+      instVec.push_back(make_pair(i1, true));
+      return instVec;
+    }
+    cerr << "error: mnemonic, bnei" << endl;
+    error = true;
+  }
 
-  // formRIR
+  // formRIRM
   else if(instName == "lw"){
-    if(sscanf(buffer, formRIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
+    if(sscanf(buffer, formRIRM, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("lw");
       i1.op = 0x23;
       instVec.push_back(make_pair(i1, false));
@@ -404,7 +471,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     error = true;
   }
   else if(instName == "sw"){
-    if(sscanf(buffer, formRIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
+    if(sscanf(buffer, formRIRM, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("sw");
       i1.op = 0x2b;
       instVec.push_back(make_pair(i1, false));
@@ -413,6 +480,27 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     cerr << "error: mnemonic, sw" << endl;
     error = true;
   }
+  else if(instName == "lwr"){
+    if(sscanf(buffer, formRRRM, dummy, &(i1.rd), &(i1.rt), &(i1.rs)) == 4){
+      i1.ty = R_TYPE; i1.name = string("lwr");
+      i1.op = 0x24;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, lwr" << endl;
+    error = true;
+  }
+  else if(instName == "swr"){
+    if(sscanf(buffer, formRRRM, dummy, &(i1.rd), &(i1.rt), &(i1.rs)) == 4){
+      i1.ty = R_TYPE; i1.name = string("swr");
+      i1.op = 0x2c;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, swr" << endl;
+    error = true;
+  }
+
 
   // formRI
   else if(instName == "lui"){
@@ -495,7 +583,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
 
   // float周りの実装
   else if(instName == "lwcl"){
-    if(sscanf(buffer, formFrIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
+    if(sscanf(buffer, formFrIRM, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("lwcl");
       i1.op = 0x31;
       instVec.push_back(make_pair(i1, false));
@@ -504,7 +592,7 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     cerr << "error: mnemonic, lwcl" << endl;
   }
   else if(instName == "swcl"){
-    if(sscanf(buffer, formFrIR, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
+    if(sscanf(buffer, formFrIRM, dummy, &(i1.rt), &(i1.im), &(i1.rs)) == 4){
       i1.ty = I_TYPE; i1.name = string("swcl");
       i1.op = 0x39;
       instVec.push_back(make_pair(i1, false));
@@ -512,6 +600,26 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     }
     cerr << "error: mnemonic, swcl" << endl;
   }
+  else if(instName == "lwclr"){
+    if(sscanf(buffer, formFrRRM, dummy, &(i1.rd), &(i1.rt), &(i1.rs)) == 4){
+      i1.ty = R_TYPE; i1.name = string("lwclr");
+      i1.op = 0x21;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, lwclr" << endl;
+  }
+  else if(instName == "swclr"){
+    if(sscanf(buffer, formFrRRM, dummy, &(i1.rd), &(i1.rt), &(i1.rs)) == 4){
+      i1.ty = R_TYPE; i1.name = string("swclr");
+      i1.op = 0x29;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, swclr" << endl;
+  }
+
+
 
   else if(instName == "bclt"){
     if(sscanf(buffer, formL, dummy, label) == 2){
@@ -582,6 +690,15 @@ vector<pair<inst,bool> > mnemonic(string instName, char* buffer){
     if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
       i1.ty = FR_TYPE; i1.name = instName;
       i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x5;
+      instVec.push_back(make_pair(i1, false));
+      return instVec;
+    }
+    cerr << "error: mnemonic, " << instName << endl;    
+  }
+  else if(instName == "fabs"){
+    if(sscanf(buffer, formFrFr, dummy, &(i1.rd), &(i1.rs)) == 3){
+      i1.ty = FR_TYPE; i1.name = instName;
+      i1.op = 0x11; i1.fmt = 0x10; i1.fu = 0x7;
       instVec.push_back(make_pair(i1, false));
       return instVec;
     }
