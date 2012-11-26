@@ -50,16 +50,16 @@ type TopLevel = [Fundef]
 type Prog = (T, TopLevel)
 
 type KnownSet = St.Set I.Id 
-type ClosState = State TopLevel
+type ClosMonad = G.ReadGlobal (State TopLevel)
 
 closMain :: G.GloTup -> K.T -> Prog
 closMain gloTup kExp = 
   let !_ = DT.trace ("closure...") () in  
-  runState (cloNize gloTup Mp.empty St.empty kExp) []
+  runState (G.runGlobal (cloNize Mp.empty St.empty kExp) gloTup) []
 
 
-cloNize :: G.GloTup -> Typi.TypeEnv -> KnownSet -> K.T -> ClosState T
-cloNize gloTup tEnv kSet exp = case exp of
+cloNize :: Typi.TypeEnv -> KnownSet -> K.T -> ClosMonad T
+cloNize tEnv kSet exp = case exp of
   K.Unit        -> return $ Unit
   K.Int i       -> return $ Int i
   K.Float f     -> return $ Float f
@@ -75,48 +75,49 @@ cloNize gloTup tEnv kSet exp = case exp of
   K.FSub x y    -> return $ FSub x y
   K.FMul x y    -> return $ FMul x y
   K.FDiv x y    -> return $ FDiv x y
-  K.IfEq x y e1 e2      -> do{ [e1',e2'] <- mapM (cloNize gloTup tEnv kSet) [e1,e2]
+  K.IfEq x y e1 e2      -> do{ [e1',e2'] <- mapM (cloNize tEnv kSet) [e1,e2]
                              ; return $ IfEq x y e1' e2' }
-  K.IfLe x y e1 e2      -> do{ [e1',e2'] <- mapM (cloNize gloTup tEnv kSet) [e1,e2]
+  K.IfLe x y e1 e2      -> do{ [e1',e2'] <- mapM (cloNize tEnv kSet) [e1,e2]
                              ; return $ IfLe x y e1' e2' }
   K.Var x               -> return $ Var x
-  K.Let (x,t) e1 e2     -> do{ e1' <- cloNize gloTup tEnv kSet e1
-                             ; e2' <- cloNize gloTup (Mp.insert x t tEnv) kSet e2
+  K.Let (x,t) e1 e2     -> do{ e1' <- cloNize tEnv kSet e1
+                             ; e2' <- cloNize (Mp.insert x t tEnv) kSet e2
                              ; return $ Let (x,t) e1' e2'}
   K.LetRec (K.Fundef{K.name=(x,t), K.args=yts, K.body=e1}) e2
     -> do{ backup <- get
          ; let tEnv' = Mp.insert x t tEnv
          ; let tEnv'' = foldl (\env (k,e)-> Mp.insert k e env) tEnv' yts
          ; let kSet' = St.insert x kSet
-         ; e1' <- cloNize gloTup tEnv'' kSet' e1   -- 関数xがクロージャでないと仮定する
+         ; e1' <- cloNize tEnv'' kSet' e1   -- 関数xがクロージャでないと仮定する
+                  -- 関数x自身はfree扱い(AppDirを除いて)
          ; let diff = St.difference (freeVar e1') (St.fromList $ (fst.unzip) yts)
-               -- globalな変数は引き算               
+         ; globals <- fmap Mp.keys G.env  -- globalな変数は引き算
          ; let diff' = St.difference diff (St.fromList globals)
          ; (kSet', e1') <- if St.null diff'
                            then do let !_ = DT.trace ("making dirfunc: "++x) ()
                                    return (kSet', e1')     -- nullならそのままでOK
                            else do let !_ = DT.trace ("making closure: "++x) ()
                                    put backup          -- 自由変数があったらbackup 
-                                   e1' <- cloNize gloTup tEnv'' kSet e1
+                                   e1' <- cloNize tEnv'' kSet e1
                                    return (kSet, e1')
          ; let freezs = St.toList $ St.difference (freeVar e1')
                          (St.insert x (St.fromList $ (fst.unzip) yts))
                -- globalな変数は引数から除く                        
-         ; let freezs' = filter (\x -> Mp.notMember x (G.env gloTup)) freezs
+         ; freezs' <- filterM (\x -> fmap not (G.memGlo x)) freezs
          ; let freezts = zip freezs $ catMaybes $ map (\z-> Mp.lookup z tEnv') freezs'
          ; modify (\ls -> (Fundef{ name=(I.Label x, t), args=yts
                                  , formalFv= freezts, body= e1'}):ls)
-         ; e2' <- cloNize gloTup tEnv' kSet' e2
+         ; e2' <- cloNize tEnv' kSet' e2
          ; if St.member x (freeVar e2')
+              -- x を変数として使う(関数そのものを返り値にするときなど)
            then return $ MakeCls (x,t) Clos{entry=I.Label x, actualFv=freezs'} e2'
            else return e2'}
-      where globals = Mp.keys (G.env gloTup) -- 引数におけるglobal変数
   K.App x ys | St.member x kSet -> return $ AppDir (I.Label x) ys
   K.App x ys                    -> return $ AppCls x ys
   K.Tuple xs            -> return $ Tuple xs
   K.LetTuple xts y e    
     -> do{ let tEnv' = foldl (\env (k,e) -> Mp.insert k e env) tEnv xts
-         ; e' <- cloNize gloTup tEnv' kSet e; return $ LetTuple xts y e'}
+         ; e' <- cloNize tEnv' kSet e; return $ LetTuple xts y e'}
   K.Get x y             -> return $ Get x y
   K.Put x y z           -> return $ Put x y z
   K.ExtFunApp x ys      -> return $ AppDir (I.Label ("min_caml_"++x)) ys

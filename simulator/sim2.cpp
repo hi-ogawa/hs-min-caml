@@ -108,27 +108,33 @@ int simulator(){
   // showRegs();
   // cerr <<"r29(stack-min): "<< min_sp <<", r30(heap): "<< ireg[30] << endl;
 
-  //  showPcStat();
+  showPcStat();
   showInstStat();
-  cerr <<"ALL: "<< inst_num << endl;
   return 0;
 }
 
 void showPcStat(void){
-  cerr << "<< pcStatistics >>" << endl;
+  ofstream ofs("pcstat.txt");
+
+  ofs << "<< pcStatistics >>" << endl;
   for(int i=0; i < (int)pcStatistics.size(); i++){
     if(addrToLabel.find(i) != addrToLabel.end())
-      cerr <<", (label): "<< addrToLabel.find(i)->second << endl;
-    cerr << "pc " << i << " : " << pcStatistics[i] << endl;
+      ofs <<", (label): "<< addrToLabel.find(i)->second << endl;
+    ofs << "pc " << i << " : " << pcStatistics[i] << endl;
   }
-  cerr << endl;
+  ofs << endl;
 }
 
 void showInstStat(void){
-  cerr << "<< instStatistics >>" << endl;
+  ofstream ofs("inststat.txt");
+
+  ofs << "<< instStatistics >>" << endl;
+  char line[1024];
   for(int i=0; i < INSTNUM; i++){
-    fprintf(stderr, "%6s: %10llu\n", assemName[i].c_str(), instStatistics[i]);
+    sprintf(line, "%6s: %10llu\n", assemName[i].c_str(), instStatistics[i]);
+    ofs << line;
   }
+  ofs <<"   ALL: "<< inst_num << endl;
 }
 
 void showRegs(void){

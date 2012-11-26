@@ -8,7 +8,7 @@ import qualified Debug.Trace as DT
 
 elimMain :: K.T -> K.T
 elimMain exp = 
-  let !_ = DT.trace ("elim.."++(show "??")) () in
+  let !_ = DT.trace "elim.." () in
   f exp
 
 f :: K.T -> K.T

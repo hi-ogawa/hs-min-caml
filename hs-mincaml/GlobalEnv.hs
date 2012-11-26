@@ -7,6 +7,8 @@ import qualified KNormal as K
 
 import Data.Char(isLower)
 import Control.Monad.State
+import Control.Monad.Reader
+import Data.Maybe(fromJust)
 import qualified Data.Map as Mp
 import qualified Debug.Trace as DT
 
@@ -26,11 +28,6 @@ globalMain exp =
   let !_ = DT.trace ("gathering global tuple or array ...") () in
   snd $ runState (g Mp.empty exp) (Mp.empty, Mp.empty, Mp.empty, 4) --0番地はregHp保存用
 
--- 他のモジュールからのアクセス用
-env    = (\(a,b,c,d) -> a)
-dirEnv = (\(a,b,c,d) -> b)
-offMap = (\(a,b,c,d) -> c)
-offset = (\(a,b,c,d) -> d)
 
 -- グローバルなタプルor配列を探す旅     -- assoc後にやるべき!!!(size分かる。arrayが入れ子にならない)
 g :: IntEnv -> K.T -> GloState ()
@@ -99,3 +96,35 @@ modiOff x s = do (a, b, map, offset) <- get
                  let map'       = Mp.insert x offset map
                  let offset'    = offset + (s * 4)      -- word access
                  put (a, b, map', offset')
+                 
+
+---------------------------------------------
+--- reader global module --------------------
+---------------------------------------------
+
+type ReadGlobal = ReaderT GloTup
+runGlobal = runReaderT
+
+env :: (Monad m) => ReadGlobal m GloEnv
+env    = asks (\(a,b,c,d) -> a)
+dirEnv :: (Monad m) => ReadGlobal m GloDirEnv
+dirEnv = asks (\(a,b,c,d) -> b)
+offMap :: (Monad m) => ReadGlobal m GloOffMap
+offMap = asks (\(a,b,c,d) -> c)
+offset :: (Monad m) => ReadGlobal m GloOffset
+offset = asks (\(a,b,c,d) -> d)
+
+memGlo :: (Monad m) => I.Id -> ReadGlobal m Bool
+memGlo x = asks (\(a,_,_,_) -> Mp.member x a)
+
+findGlo :: (Monad m) => I.Id -> ReadGlobal m T.T
+findGlo x = asks (\(a,_,_,_) -> fromJust $ Mp.lookup x a)
+
+memDirGlo :: (Monad m) => I.Id -> ReadGlobal m Bool
+memDirGlo x = asks (\(_,b,_,_) -> Mp.member x b)
+
+findDirGlo :: (Monad m) => I.Id -> ReadGlobal m T.T
+findDirGlo x = asks (\(_,b,_,_) -> fromJust $ Mp.lookup x b)
+
+getOffset :: (Monad m) => I.Id -> ReadGlobal m Int
+getOffset x = asks (\(_,_,c,_) -> fromJust $ Mp.lookup x c)

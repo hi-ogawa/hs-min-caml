@@ -73,4 +73,3 @@ alphaTrans aEnv exp = case exp of
   K.Get x y     -> return $ K.Get (find x aEnv) (find y aEnv)
   K.Put x y z   -> return $ K.Put (find x aEnv) (find y aEnv) (find z aEnv)
   K.ExtFunApp x ys      -> return $ K.ExtFunApp (find x aEnv) (map (\y -> find y aEnv) ys)
-          

@@ -14,15 +14,17 @@ import Control.Monad.State
 import Control.Exception
 import qualified Debug.Trace as DT
 
+type VirMonad = G.ReadGlobal I.IdState
+
 ---main---------
 virtMain :: G.GloTup -> C.Prog -> I.Counter -> (A.Prog, I.Counter)
 virtMain gloTup prog c = 
   let !_ = DT.trace ("virtualize...") () in  
-  runState (cToAsmProg gloTup prog) c
+  runState (G.runGlobal (cToAsmProg prog) gloTup) c
 
 ----virtualize----            
-cToAsm :: G.GloTup -> Typi.TypeEnv -> C.T -> I.IdState A.T
-cToAsm gloTup tEnv exp = case exp of
+cToAsm :: Typi.TypeEnv -> C.T -> VirMonad A.T
+cToAsm tEnv exp = case exp of
   C.Unit                -> return $ A.Ans $ A.Nop
   C.Int i               -> return $ A.Ans $ A.Set    i
   C.Float f             -> return $ A.Ans $ A.SetF   f
@@ -39,219 +41,234 @@ cToAsm gloTup tEnv exp = case exp of
   C.FMul x1 x2          -> return $ A.Ans $ A.FMul   x1 x2
   C.FDiv x1 x2          -> return $ A.Ans $ A.FDiv   x1 x2
   C.IfEq x1 x2 e1 e2    
-    -> do [e1',e2'] <- mapM (cToAsm gloTup tEnv) [e1,e2]
+    -> do [e1',e2'] <- mapM (cToAsm tEnv) [e1,e2]
           let Just t1 = Mp.lookup x1 tEnv
           case t1 of
             T.Bool  -> return $ A.Ans $ A.IfEq  x1 (A.V x2) e1' e2'
             T.Int   -> return $ A.Ans $ A.IfEq  x1 (A.V x2) e1' e2'
             T.Float -> return $ A.Ans $ A.IfFEq x1 x2 e1' e2'
-            _       -> assert False $ error "dummy"
+            _       -> error (show __FILE__++show __LINE__)
   C.IfLe x1 x2 e1 e2
-    -> do [e1',e2'] <- mapM (cToAsm gloTup tEnv) [e1,e2]
+    -> do [e1',e2'] <- mapM (cToAsm tEnv) [e1,e2]
           let Just t1 = Mp.lookup x1 tEnv
           case t1 of
             T.Bool  -> return $ A.Ans $ A.IfLe  x1 (A.V x2) e1' e2'
             T.Int   -> return $ A.Ans $ A.IfLe  x1 (A.V x2) e1' e2'
             T.Float -> return $ A.Ans $ A.IfFLe x1 x2 e1' e2'
-            _       -> assert False $ error "dummy"
-  -- global領域に束縛(e1'内でregHpを使ったりしたら怪しい気がする)(assoc後なら大丈夫な気もする)
-  C.Let (x,t) e1 e2  | Mp.member x (G.dirEnv gloTup)
-    -> do e1' <- cToAsm gloTup tEnv e1
-          e2' <- cToAsm gloTup (Mp.insert x t tEnv) e2
-          -- regHpを0番地に退避し、regHpを一時的にxの存在するGlobal領域に設定する
-          -- xにe1'を束縛して、regHpを元に戻し、e2'を評価。
-          let Just gloX    = Mp.lookup x (G.offMap gloTup)
-          let e'           = A.Let (A.regHp, T.Int) (A.Set gloX)
-                             $ A.concatLet (x,t) e1'
-                             $ A.Let (A.regHp, T.Int) (A.Ld A.regZr (A.C 0))
-                             $ e2'
-          A.mySeq (A.St A.regHp A.regZr (A.C 0)) e'
-  -- global領域にpointerを置く
-  C.Let (x,t) e1 e2  | Mp.member x (G.env gloTup) && t /= T.Unit
-    -> do e1' <- cToAsm gloTup tEnv e1
-          e2' <- cToAsm gloTup (Mp.insert x t tEnv) e2
-          -- xにe1'を束縛。xをglobal領域にstore。e2'を評価。
-          e2'' <- A.mySeq st e2'
-          return $ A.concatLet (x,t) e1' e2''
-      where Just gloX   = Mp.lookup x (G.offMap gloTup)
-            st          = (case t of
-                              T.Unit     -> error (__FILE__)
-                              T.Float    -> A.StF x A.regZr (A.C gloX)
-                              _          -> A.St  x A.regZr (A.C gloX))
-  -- 普通のLet
+            _       -> error (show __FILE__++show __LINE__)
   C.Let (x,t) e1 e2
-    -> do e1' <- cToAsm gloTup tEnv e1
-          e2' <- cToAsm gloTup (Mp.insert x t tEnv) e2
-          return $ A.concatLet (x,t) e1' e2'
-  -- global変数を参照
-  C.Var x       | Mp.member x (G.dirEnv gloTup)
-    -> do let Just gloX = Mp.lookup x (G.offMap gloTup) -- gloX は Int
-          return $ A.Ans $ A.Set gloX
-  -- 普通の参照
-  C.Var x 
-    -> do let Just t = Mp.lookup x tEnv
-          case t of 
-            T.Unit      -> return $ A.Ans $ A.Nop
-            T.Float     -> return $ A.Ans $ A.FMov x
-            _           -> return $ A.Ans $ A.Mov  x
+    -> do e1' <- cToAsm tEnv e1
+          e2' <- cToAsm (Mp.insert x t tEnv) e2
+          -- IF          
+          (iffM (G.memDirGlo x)
+           -- THEN
+           -- global領域に束縛(e1'内でregHpを使ったりしたら怪しい気がする)(assoc後なら大丈夫な気もする)
+           -- regHpを0番地に退避し、regHpを一時的にxの存在するGlobal領域に設定する
+           -- xにe1'を束縛して、regHpを元に戻し、e2'を評価。
+           (do gloX <- G.getOffset x
+               let e'           = A.Let (A.regHp, T.Int) (A.Set gloX)
+                                  $ A.concatLet (x,t) e1'
+                                  $ A.Let (A.regHp, T.Int) (A.Ld A.regZr (A.C 0))
+                                  $ e2'
+               lift $ A.mySeq (A.St A.regHp A.regZr (A.C 0)) e'
+           )
+           $
+           -- ELSE IF
+           iffM (G.memGlo x)
+            -- THEN
+            -- global領域にpointerを置く
+            -- xにe1'を束縛。xをglobal領域にstore。e2'を評価。
+           (do gloX <- G.getOffset x
+               let st = (case t of
+                            T.Unit     -> error (show __FILE__++show __LINE__)
+                            T.Float    -> A.StF x A.regZr (A.C gloX)
+                            _          -> A.St  x A.regZr (A.C gloX))
+               e2'' <- lift $ A.mySeq st e2'
+               return $ A.concatLet (x,t) e1' e2''
+           )
+            -- ELSE
+            -- 普通のLet
+           (  
+             return $ A.concatLet (x,t) e1' e2'
+           )
+            )
+            
+  C.Var x
+    -> iffM (G.memGlo x)
+       -- global変数の参照
+       (do gloX <- G.getOffset x
+           return $ A.Ans $ A.Set gloX
+       )
+       -- 普通の参照
+       (case Mp.lookup x tEnv of
+           Just T.Unit     -> return $ A.Ans $ A.Nop
+           Just T.Float    -> return $ A.Ans $ A.FMov x
+           Just _          -> return $ A.Ans $ A.Mov  x
+           Nothing         -> error  (show __FILE__++show __LINE__)
+       )
+       
   C.MakeCls (x,t) C.Clos{C.entry=l, C.actualFv=ys} e2   -- fvはglobalになりえない
-    -> do e2' <- cToAsm gloTup (Mp.insert x t tEnv) e2
+    -> do e2' <- cToAsm (Mp.insert x t tEnv) e2
           (offset, stFvAndExp) <- foldM subFun (4, e2') ys
-          z <- I.genNewId "lab"
-          lastExp <- A.mySeq (A.St z x (A.C 0)) stFvAndExp
+          z <- lift $ I.genNewId "lab"
+          lastExp <- lift $ A.mySeq (A.St z x (A.C 0)) stFvAndExp
           return $ A.Let (x, t) (A.Mov A.regHp)
                         (A.Let (A.regHp, T.Int) (A.Add A.regHp (A.C offset))
                          (A.Let (z, T.Int) (A.SetL l) lastExp))
       where subFun (o, e) y = (case getType tEnv y of
                                   T.Unit  -> return (o, e)
-                                  T.Float -> do e' <- A.mySeq (A.StF y x (A.C o)) e
+                                  T.Float -> do e' <- lift $ A.mySeq (A.StF y x (A.C o)) e
                                                 return (o+4, e')
-                                  _       -> do e' <- A.mySeq (A.St  y x (A.C o)) e
+                                  _       -> do e' <- lift $ A.mySeq (A.St  y x (A.C o)) e
                                                 return (o+4, e'))
-  -- とりま
-  -- C.AppCls x ys -> return $ A.Ans $ A.CallCls x is fs
-  --   where (is,fs) = separate tEnv ys
-  -- C.AppDir x ys -> return $ A.Ans $ A.CallDir x is fs
-  --   where (is,fs) = separate tEnv ys  
   C.AppCls x ys  -> 
     do -- globalなint引数を探す(関数の関数呼び出しは注意)
        let (is, fs) = separate tEnv ys
-       is' <- mapM (\x -> if Mp.member x (G.dirEnv gloTup) 
-                          then I.genNewId x
-                          else return x) is
-       return $ foldl subFun2 (A.Ans $ A.CallCls x is' fs) (zip is is')
-      where subFun2 e (old, new) = 
+       is' <- mapM (\x -> iffM (G.memDirGlo x)  -- IF
+                          (lift $ I.genNewId x) -- THEN
+                          (return x)            -- ELSE
+                   ) is
+       foldM subFun (A.Ans $ A.CallCls x is' fs) (zip is is')
+      where subFun e (old, new) = 
               if old == new
-              then e
-              else let Just gloNew = Mp.lookup old (G.offMap gloTup) 
-                   in  A.Let (new, T.Int) (A.Set gloNew) e
+              then return e
+              else 
+                do gloNew <- G.getOffset old
+                   return $ A.Let (new, T.Int) (A.Set gloNew) e
   C.AppDir l ys  ->
     do -- globalなint引数を探す
        let (is, fs) = separate tEnv ys
-       is' <- mapM (\x -> if Mp.member x (G.dirEnv gloTup)
-                          then I.genNewId x
-                          else return x) is
-       return $ foldl subFun2 (A.Ans $ A.CallDir l is' fs) (zip is is')
-      where subFun2 e (old, new) = 
+       is' <- mapM (\x -> iffM (G.memDirGlo x)  -- IF
+                          (lift $ I.genNewId x) -- THEN
+                          (return x)            -- ELSE
+                   ) is
+       foldM subFun (A.Ans $ A.CallDir l is' fs) (zip is is')
+      where subFun e (old, new) = 
               if old == new
-              then e
-              else let Just gloNew = Mp.lookup old (G.offMap gloTup) 
-                   in  A.Let (new, T.Int) (A.Set gloNew) e
+              then return e
+              else 
+                do gloNew <- G.getOffset old
+                   return $ A.Let (new, T.Int) (A.Set gloNew) e
   C.Tuple xs    -- unit型の要素は削除
-    -> do y <- I.genNewId "tup"
+    -> do y <- lift $ I.genNewId "tup"
           let subFun (o, e) x = case getType tEnv x of
                 T.Unit       -> return (o, e)
-                T.Float      -> do e' <- A.mySeq (A.StF x y (A.C o)) e 
+                T.Float      -> do e' <- lift $ A.mySeq (A.StF x y (A.C o)) e 
                                    return (o+4, e')
-                _            -> do e' <- A.mySeq (A.St  x y (A.C o)) e
+                _            -> do e' <- lift $ A.mySeq (A.St  x y (A.C o)) e
                                    return (o+4, e')
           (offset, stAndMov) <- foldM subFun (0, A.Ans $ A.Mov y) xs
           return $ A.Let (y, T.Int) (A.Mov A.regHp)
                    (A.Let (A.regHp, T.Int) (A.Add A.regHp (A.C offset)) stAndMov)
-  -- globalのyをxtsに束縛            
-  C.LetTuple xts y e2   | Mp.member y (G.dirEnv gloTup)
-    -> do e2' <- cToAsm gloTup (foldl (\env (x,t)-> Mp.insert x t env) tEnv xts) e2
-          let Just gloY = Mp.lookup y (G.offMap gloTup) -- gloY は Int
-          let e2Fv      = C.freeVar e2
-          let subFun (o,e) (x,t) = case t of
-                T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
-                T.Float        -> if St.member x e2Fv
-                                  then return (o+4,  A.Let (x,t) (A.LdF A.regZr (A.C $ gloY + o)) e)
-                                  else return (o+4, e)
-                _              -> if St.member x e2Fv 
-                                  then return (o+4,  A.Let (x,t) (A.Ld  A.regZr (A.C $ gloY + o)) e)
-                                  else return (o+4, e)     
-          (_, ldAndExp) <- foldM subFun (0, e2') xts
-          return ldAndExp
-  -- 普通のLetTuple              
-  C.LetTuple xts y e2
-    -> do e2' <- cToAsm gloTup (foldl (\env (x,t)-> Mp.insert x t env) tEnv xts) e2
-          (_, ldAndExp) <- foldM subFun (0, e2') xts
-          return ldAndExp
-      where e2Fv        = C.freeVar e2
-            subFun (o,e) (x,t) = case t of
-              T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
-              T.Float        -> if St.member x e2Fv
-                                then return (o+4,  A.Let (x,t) (A.LdF y (A.C o)) e)
-                                else return (o+4,e)
-              _              -> if St.member x e2Fv
-                                then return (o+4,  A.Let (x,t) (A.Ld  y (A.C o)) e)
-                                else return (o+4,e)
-  -- global arrayのget
-  C.Get x y     | Mp.member x (G.dirEnv gloTup)
-    -> do let Just gloX = Mp.lookup x (G.offMap gloTup) -- gloX は Int
-          offset  <- I.genNewId "off1"
-          case getType tEnv x of
-            T.Array T.Unit   -> return $ A.Ans A.Nop
-            T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2)
-                                              (A.Ans $ A.LdF offset (A.C gloX))
-            T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2)
-                                              (A.Ans $ A.Ld  offset (A.C gloX))
-            _                -> error (show __LINE__)
-  -- 普通のget
-  C.Get x y     
-    -> do offset  <- I.genNewId "off2"
-          case getType tEnv x of
-            T.Array T.Unit   -> return $ A.Ans A.Nop
-            T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
-                                              (A.Ans $ A.LdF x (A.V offset))
-            T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2) 
-                                              (A.Ans $ A.Ld  x (A.V offset))
-            _                -> error (show __LINE__)
-  -- global arrayのput
-  C.Put x y z     | Mp.member x (G.dirEnv gloTup)
-    -> do let Just gloX = Mp.lookup x (G.offMap gloTup) -- gloX は Int
-          offset  <- I.genNewId "off3"
-          stf     <- A.mySeq (A.StF z offset (A.C gloX)) (A.Ans A.Nop)
-          st      <- A.mySeq (A.St  z offset (A.C gloX)) (A.Ans A.Nop)
-          case getType tEnv z of
-            T.Unit  -> return $ A.Ans A.Nop
-            T.Float -> return $ A.Let (offset, T.Int) (A.SLL y 2) stf
-            _       -> return $ A.Let (offset, T.Int) (A.SLL y 2) st
-  -- 普通のget
-  C.Put x y z   
-    -> do offset  <- I.genNewId "off4"
-          stf     <- A.mySeq (A.StF z x (A.V offset)) (A.Ans A.Nop)
-          st      <- A.mySeq (A.St  z x (A.V offset)) (A.Ans A.Nop)
-          case getType tEnv z of
-            T.Unit  -> return $ A.Ans A.Nop
-            T.Float -> return $ A.Let (offset, T.Int) (A.SLL y 2) stf
-            _       -> return $ A.Let (offset, T.Int) (A.SLL y 2) st            
-                       
-
-
+            
+  C.LetTuple xts y e2          
+    -> do e2' <- cToAsm (foldl (\env (x,t)-> Mp.insert x t env) tEnv xts) e2
+          memdir <- G.memDirGlo y
+          (if memdir
+           then -- globalのyをxtsに束縛
+             do gloY <- G.getOffset y
+                let e2Fv = C.freeVar e2
+                let subFun (o,e) (x,t) = case t of
+                      T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
+                      T.Float        -> if St.member x e2Fv
+                                        then return (o+4,  A.Let (x,t) (A.LdF A.regZr (A.C $ gloY + o)) e)
+                                        else return (o+4, e)
+                      _              -> if St.member x e2Fv 
+                                        then return (o+4,  A.Let (x,t) (A.Ld  A.regZr (A.C $ gloY + o)) e)
+                                        else return (o+4, e)     
+                (_, ldAndExp) <- foldM subFun (0, e2') xts
+                return ldAndExp
+                
+           else -- 普通のLetTuple
+             do let e2Fv = C.freeVar e2
+                let subFun (o,e) (x,t) = case t of
+                      T.Unit         -> return (o,e)    -- unit型の要素は束縛しない
+                      T.Float        -> if St.member x e2Fv
+                                        then return (o+4,  A.Let (x,t) (A.LdF y (A.C o)) e)
+                                        else return (o+4,e)
+                      _              -> if St.member x e2Fv
+                                        then return (o+4,  A.Let (x,t) (A.Ld  y (A.C o)) e)
+                                        else return (o+4,e)
+                (_, ldAndExp) <- foldM subFun (0, e2') xts
+                return ldAndExp
+            )               
+  C.Get x y
+    -> do memdir <- G.memDirGlo x
+          (if memdir 
+           then -- global arrayのget
+             do gloX <- G.getOffset x
+                offset <- lift $ I.genNewId "geto1"
+                case getType tEnv x of
+                  T.Array T.Unit   -> return $ A.Ans A.Nop
+                  T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2)
+                                                (A.Ans $ A.LdF offset (A.C gloX))
+                  T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2)
+                                                (A.Ans $ A.Ld  offset (A.C gloX))
+                  _                -> error (show __FILE__++show __LINE__)
+                  
+           else   -- 普通のget
+             do offset <- lift $ I.genNewId "geto2"
+                case getType tEnv x of                                                          
+                  T.Array T.Unit   -> return $ A.Ans A.Nop                                      
+                  T.Array T.Float  -> return $ A.Let (offset,T.Int) (A.SLL y 2)                 
+                                                    (A.Ans $ A.LdF x (A.V offset))              
+                  T.Array _        -> return $ A.Let (offset,T.Int) (A.SLL y 2)                 
+                                                    (A.Ans $ A.Ld  x (A.V offset))              
+                  _                -> error (show __FILE__++show __LINE__)
+            )
+  C.Put x y z
+    -> do memdir <- G.memDirGlo x
+          (if memdir
+           then -- global arrayのput
+             do gloX <- G.getOffset x
+                offset  <- lift $ I.genNewId "puto1"
+                stf     <- lift $ A.mySeq (A.StF z offset (A.C gloX)) (A.Ans A.Nop)  
+                st      <- lift $ A.mySeq (A.St  z offset (A.C gloX)) (A.Ans A.Nop)  
+                case getType tEnv z of                                        
+                  T.Unit  -> return $ A.Ans A.Nop                             
+                  T.Float -> return $ A.Let (offset, T.Int) (A.SLL y 2) stf   
+                  _       -> return $ A.Let (offset, T.Int) (A.SLL y 2) st
+           else -- 普通のget
+             do offset  <- lift $ I.genNewId "puto2"                                          
+                stf     <- lift $ A.mySeq (A.StF z x (A.V offset)) (A.Ans A.Nop)             
+                st      <- lift $ A.mySeq (A.St  z x (A.V offset)) (A.Ans A.Nop)             
+                case getType tEnv z of                                                
+                  T.Unit  -> return $ A.Ans A.Nop                                     
+                  T.Float -> return $ A.Let (offset, T.Int) (A.SLL y 2) stf           
+                  _       -> return $ A.Let (offset, T.Int) (A.SLL y 2) st            
+            )
 ----Prog変換--------------------------------------------------
-cToAsmProg :: G.GloTup -> C.Prog -> I.IdState A.Prog
-cToAsmProg gloTup (e, fundefs) = do fundefs' <- mapM (cToAsmFundef gloTup) fundefs
-                                    e'       <- cToAsm gloTup (Mp.empty) e
-                                    return (e', fundefs')
+cToAsmProg :: C.Prog -> VirMonad A.Prog
+cToAsmProg (e, fundefs) = do fundefs' <- mapM cToAsmFundef fundefs
+                             globalts <- G.env  -- 型チェック用
+                             e'       <- cToAsm globalts e
+                             return (e', fundefs')
   
 ----Fundef変換------------------------------------------------
-cToAsmFundef :: G.GloTup -> C.Fundef -> I.IdState A.Fundef  
-cToAsmFundef gloTup C.Fundef{ C.name = (I.Label x, t), C.args = yts 
-                            , C.formalFv = zts       , C.body = e }
-  = do e' <- cToAsm gloTup (Mp.insert x t $ Mp.fromList (yts++zts++globalts)) e
-       (_, ldAndExp)  <- foldM subFun1 (4, e') zts        -- load free   var
-       (_, ldAndExp') <- foldM subFun2 (0, ldAndExp) fvts --load global var(not dir)
+cToAsmFundef :: C.Fundef -> VirMonad A.Fundef  
+cToAsmFundef C.Fundef{ C.name = (I.Label x, t), C.args = yts 
+                     , C.formalFv = zts       , C.body = e }
+  = do globalts <- fmap Mp.toList G.env  -- 型チェック用
+       fvGlobal <- filterM (\x -> (&&) `liftM` G.memGlo x `ap` (fmap not $ G.memDirGlo x)
+                           ) $ St.toList (C.freeVar e)
+       fvts     <- mapM (\x -> do (x,) `liftM` G.findGlo x
+                        ) fvGlobal
+       e' <- cToAsm (Mp.insert x t $ Mp.fromList (yts++zts++globalts)) e
+       (_, ldAndExp)  <- foldM subFun1 (4, e') zts        -- load free var
+       (_, ldAndExp') <- foldM subFun2 (0, ldAndExp) fvts -- load global var (not dir)
        let (is, fs) = separate (Mp.fromList yts) $ (fst.unzip) yts
        case t of 
          T.Fun _ tRet -> 
            return $ A.Fundef{ A.name = I.Label x,  A.args = is, A.fargs = fs
                             , A.body = ldAndExp', A.ret  = tRet }
-         _             -> assert False $ error "dummy"
-  where globalts        = Mp.toList $ G.env gloTup      -- 型チェック用
-        fvGlobal        = filter (\x -> Mp.member x (G.env gloTup)
-                                        && (not $ Mp.member x (G.dirEnv gloTup))
-                                 ) $ St.toList (C.freeVar e)
-        fvts            = map (\x -> let Just t = Mp.lookup x (G.env gloTup) in (x, t)
-                              ) fvGlobal
-        subFun1 (o, e) (z, t) = case t of
+         _             -> error (show __FILE__++show __LINE__)
+  where subFun1 (o, e) (z, t) = case t of
           T.Unit  -> return (o, e)
           T.Float -> return (o+4, A.Let (z, t) (A.LdF A.regCl (A.C o)) e)
           _       -> return (o+4, A.Let (z, t) (A.Ld  A.regCl (A.C o)) e)
         subFun2 (_, e) (z, t) =
-          let Just gloZ = Mp.lookup z (G.offMap gloTup) in
-          return (0, A.Let (z, t) (A.Ld A.regZr (A.C gloZ)) e)
+          do gloZ <- G.getOffset z
+             return (0, A.Let (z, t) (A.Ld A.regZr (A.C gloZ)) e)
                                     
            
 ----汎用関数----------------------------------------------------
@@ -264,4 +281,11 @@ separate tEnv xs = foldl subFun ([], []) xs
 getType :: Typi.TypeEnv -> I.Id -> T.T
 getType tEnv x = (case Mp.lookup x tEnv of
                      Just t           -> t
-                     Nothing          -> error ("tEnv:"++(show tEnv)++", x:"++x))
+                     Nothing          -> error (show __FILE__++show __LINE__
+                                                ++"tEnv:"++(show tEnv)++", x:"++x))
+
+iff :: Bool -> a -> a -> a
+iff a b c = if a then b else c
+
+iffM :: Monad m => m Bool -> m a -> m a -> m a
+iffM mb ma1 ma2 = iff `liftM` mb `ap` ma1 `ap` ma2

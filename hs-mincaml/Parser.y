@@ -3,18 +3,19 @@
 module Parser where
 
 import Lexer as L
-import qualified Type as T
-import qualified IdMod as I
-import qualified Syntax as S
+import Type as T
+import IdMod as I
+import Syntax as S
 
 import Control.Monad.State
 import Control.Monad.Error
+import Control.Monad.Reader
 }
 
 %name parser
 %tokentype { L.Token }
 %error { parseError }
-%monad { ParseState } { (>>=) } { return }
+%monad { ParseMonad } { (>>=) } { return }
 
 %token 
 int	{ INT $$ }
@@ -104,21 +105,21 @@ E :: { S.T }
         | "xor"    SimpleE SimpleE      { S.Not (S.Eq $2 $3) }
 	| "fabs"   SimpleE		{ S.Fabs $2 }
         -- expansion --
-        | "fun" FormArgE "->" E {% do{ newf <- genNewId
-                                     ; newt <- genTypeVar
+        | "fun" FormArgE "->" E {% do{ newf <- (lift.lift) $ I.genNewId "lambda"
+                                     ; newt <- (lift) T.genTypeVar
                                      ; return $ S.LetRec S.Fundef{S.name=(newf,newt), S.args=$2, S.body=$4} (S.Var newf)} }
         | "sqrt" E              { S.Sqrt $2 }
 	| "-" E %prec P_NEG	{ negOrFneg $2 }
 	| "-." E %prec P_NEG	{ S.FNeg $2 }
         | if E then E else E %prec P_IF     { S.If $2 $4 $6 }
-	| let id "=" E in E %prec P_LET   	{% do{ newt <- genTypeVar
+	| let id "=" E in E %prec P_LET   	{% do{ newt <- (lift) T.genTypeVar
                                                      ; return $ S.Let ($2, newt) $4 $6} }
 	| let rec FundefE in E %prec P_LET    { S.LetRec $3 $5 }
 	| E ActArgE %prec P_APP               { S.App $1 $2 }
 	| SimpleE "." "(" E ")" "<-" E	{ S.Put $1 $4 $7 }
         | ElemsE                              { S.Tuple $1 }
         | let "(" PatE ")" "=" E in E     { S.LetTuple $3 $6 $8}
-	| E ";" E		{% do{ newt <- genTypeVar
+	| E ";" E		{% do{ newt <- (lift) T.genTypeVar
                                      ; return $ S.Let ("_", newt) $1 $3 }}
         | array SimpleE SimpleE	{ S.Array $2 $3 }
 
@@ -134,15 +135,15 @@ SimpleE :: { S.T }
 	| SimpleE "." "(" E ")"	{ S.Get $1 $4 }
 
 FundefE :: { S.Fundef }
-        : id FormArgE "=" E	{% do{ newt <- genTypeVar
+        : id FormArgE "=" E	{% do{ newt <- (lift) T.genTypeVar
                                      ; return $ S.Fundef ($1, newt) $2 $4 }}
 
 FormArgE :: { [(I.Id, T.T)] }
-	: "(" ")"		{% do{ newt <- genTypeVar
+	: "(" ")"		{% do{ newt <- (lift) T.genTypeVar
                                      ; return $ [("unit", newt)]}}
-	| id FormArgE		{% do{ newt <- genTypeVar
+	| id FormArgE		{% do{ newt <- lift T.genTypeVar
                                      ; return $ ($1, newt) : $2 }}
-	| id			{% do{ newt <- genTypeVar
+	| id			{% do{ newt <- lift T.genTypeVar
                                      ; return $ [($1, newt)] }}
 
 ActArgE :: { [S.T] }
@@ -154,40 +155,35 @@ ElemsE :: { [S.T] }
         | E "," E               { [$1, $3] }          
           
 PatE :: { [(I.Id, T.T)] }
-        : PatE "," id   {% do{ newt <- genTypeVar
+        : PatE "," id   {% do{ newt  <- lift T.genTypeVar
                              ; return $ $1 ++ [($3, newt)] }}
-        | id "," id     {% do{ newt1 <- genTypeVar
-                             ; newt2 <- genTypeVar
+        | id "," id     {% do{ newt1 <- lift T.genTypeVar
+                             ; newt2 <- lift T.genTypeVar
                              ; return $ [($1, newt1), ($3, newt2)]}}
 
 {
--- parser :: [Token] -> ParseState S.T  
+-- parser :: [Token] -> ParseMonad S.T  
   
-type ParseState = ErrorT String (State (T.TypeN, I.Counter, [L.AlexPosn]))
+type ParseMonad = 
+  ReaderT [L.AlexPosn] (T.TyStateT (I.IdStateT (Either String)))
   
-parseError :: [L.Token] -> ParseState a
-parseError toks = do{ (_, _, poss) <- get
-                    ; let AlexPn _ li co = last $ take (length toks) (reverse poss)
-                    ; throwError $ "parseError: "++"("++(show li)++", "++(show co)++")"}
+parseError :: [L.Token] -> ParseMonad a
+parseError toks = do{ poss <- ask
+                    ; let pos = last $ take (length toks) (reverse poss)
+                    ; throwError $ "parseError: "++(L.showPosn pos) }
 
-genTypeVar :: ParseState T.T
-genTypeVar = do{ (i1, i2, poss) <- get
-               ; put (i1+1, i2, poss)
-               ; return $ T.Var (i1+1) }
-genNewId :: ParseState I.Id      -- lambda抽象の名前付け
-genNewId = do{ (i1, i2, poss) <- get
-             ; put (i1, i2+1, poss)
-             ; return (".lamb"++(show (i2+1))) }
-
-scanAndParse :: String -> Either String (S.T, T.TypeN)
+scanAndParse :: String -> Either String (S.T, T.TypeN, I.Counter)
 scanAndParse input = 
   do (poss, tokens) <- fmap unzip (L.mainLex input)
-     case runState (runErrorT $ parser tokens) (0, 0, poss) of
-       (Left msg,  _ ) -> throwError msg
-       (Right exp, (lastN, _, _)) -> return (exp, lastN)
+     case evalStateT (evalStateT (runReaderT (parser' tokens) poss) 0) 0 of
+       Left  msg                -> throwError msg
+       Right (exp, n, c)        -> return (exp, n, c)
+  where parser' tokens = do exp   <- parser tokens
+                            lastN <- lift get
+                            lastC <- (lift.lift) get
+                            return (exp, lastN, lastC)
        
 ---- mul, div => sll, sra ----       
-
 sllOrMul :: S.T -> S.T -> S.T       
 sllOrMul e1 e2 = 
   if isLog2Exp e2 

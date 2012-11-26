@@ -9,6 +9,7 @@ import qualified Data.Map as Mp
 import qualified Data.Set as St
 import Control.Monad.State
 import Control.Monad.Error
+import Control.Monad.Writer
 import qualified Debug.Trace as DT
 
 type TypeEnv = Mp.Map I.Id T.T -- 型環境
@@ -16,7 +17,7 @@ type Constraints = [(T.T, T.T)] -- 型に関する制約
 type Dainyu = Mp.Map T.TypeN T.T -- 型変数から具体的な型へのマップ
 
 -- gatherするときのState諸々(T.TypeNはParserのlastStateを持ってくる)
-type TypingState = ErrorT String (State (Constraints, T.TypeN))
+type TypingMonad = ErrorT String (StateT Constraints (T.TyStateT I.IdState))
 
 -- 推論されない外部関数は事前登録
 tEnvInit = foldr (\(x, t) mp -> Mp.insert x t mp) Mp.empty extFunList
@@ -28,46 +29,54 @@ extFunList = [("print_char",    (T.Fun [T.Int] T.Unit))
              ,("floor",         (T.Fun [T.Float] T.Float))              
              ,("sqrt",          (T.Fun [T.Float] T.Float))]
 
-typing :: S.T -> T.TypeN -> Either String (T.T, S.T)
-typing parsedExp lastN = 
+typiMain :: S.T -> I.Counter -> T.TypeN -> Either String (S.T, I.Counter)
+typiMain exp c n = 
   do let !_ = DT.trace ("typing...") () 
-     case runState (runErrorT $ gatherC tEnvInit parsedExp) ([], lastN) of
-       (Left msg, _ )                   -> Left msg
-       (Right ty, (cons, lastN'))    -> 
-         do{ dain <- unify cons
-           ; let ty' = inferType dain ty
-           ; let typedExp = inferExp dain parsedExp
-           ; if ty' /= T.Unit
+     case runState (evalStateT (evalStateT (runErrorT $ gatherC' exp) []) n) c of
+       (Left  msg,  _)                       -> Left msg
+       (Right (e', ty , cons, n', c'), _)    -> 
+         do dain <- unify cons
+            let ty' = inferType dain ty
+            let exp'= inferExp dain e'
+            (if ty' /= T.Unit
              then throwError $ "TYPE ERROR: toplevel must be UNIT, but inferred: "++(show ty')
-             else return (ty', typedExp)}
+             else return (exp', c'))
+  where gatherC' e = do (e', t) <- gatherC tEnvInit e
+                        cons <- lift get
+                        n    <- (lift.lift) get
+                        c    <- (lift.lift.lift) get
+                        return (e', t, cons, n, c)
   
-----------------ひたすらgather(制約集め)----------------------------
-gatherC :: TypeEnv -> S.T -> TypingState T.T
+----------------ひたすらgather(制約集め)(部分適用の書き換え)----------------------------
+-- gatherC :: TypeEnv -> S.T -> TypingMonad T.T
+gatherC :: TypeEnv -> S.T -> TypingMonad (S.T, T.T)
 gatherC tEnv exp =
   case exp of
-    S.Unit      -> return T.Unit
-    S.Bool _    -> return T.Bool
-    S.Int _     -> return T.Int
-    S.Float _   -> return T.Float
-    S.Not e     -> do{ t <- gatherC tEnv e; insertC (t, T.Bool); return T.Bool }
-    S.Neg e     -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
-    S.FNeg e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
-    S.Fabs e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
-    S.Sqrt e    -> do{ t <- gatherC tEnv e; insertC (t, T.Float); return T.Float }
-    S.Add e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
-    S.Sub e1 e2 -> gatherDualOp tEnv e1 e2 T.Int
-    S.SLL e _   -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
-    S.SRA e _   -> do{ t <- gatherC tEnv e; insertC (t, T.Int); return T.Int }
-    S.FAdd e1 e2        -> gatherDualOp tEnv e1 e2 T.Float
-    S.FSub e1 e2        -> gatherDualOp tEnv e1 e2 T.Float
-    S.FMul e1 e2        -> gatherDualOp tEnv e1 e2 T.Float
-    S.FDiv e1 e2        -> gatherDualOp tEnv e1 e2 T.Float
-    S.Eq e1 e2          -> gatherCmp tEnv e1 e2 
-    S.Le e1 e2          -> gatherCmp tEnv e1 e2    
+    S.Unit      -> return (exp, T.Unit)
+    S.Bool _    -> return (exp, T.Bool )
+    S.Int _     -> return (exp, T.Int  )
+    S.Float _   -> return (exp, T.Float)
+    S.Not e     -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Bool);  return (S.Not e', T.Bool ) }
+    S.Neg e     -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Int);   return (S.Neg e', T.Int  ) }
+    S.FNeg e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.FNeg e', T.Float) }
+    S.Fabs e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.Fabs e', T.Float) }
+    S.Sqrt e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.Sqrt e', T.Float) }
+    S.Add e1 e2 -> gatherDualOp tEnv e1 e2 T.Int S.Add
+    S.Sub e1 e2 -> gatherDualOp tEnv e1 e2 T.Int S.Sub
+    S.SLL e i   -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Int); return (S.SLL e' i, T.Int) }
+    S.SRA e i   -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Int); return (S.SRA e' i, T.Int) }
+    S.FAdd e1 e2        -> gatherDualOp tEnv e1 e2 T.Float S.FAdd
+    S.FSub e1 e2        -> gatherDualOp tEnv e1 e2 T.Float S.FSub
+    S.FMul e1 e2        -> gatherDualOp tEnv e1 e2 T.Float S.FMul
+    S.FDiv e1 e2        -> gatherDualOp tEnv e1 e2 T.Float S.FDiv
+    S.Eq e1 e2          -> gatherCmp tEnv e1 e2 S.Eq
+    S.Le e1 e2          -> gatherCmp tEnv e1 e2 S.Le
     S.If e1 e2 e3       -> gatherIf tEnv e1 e2 e3
     S.Var id            -> gatherVar tEnv id          -- error if not bounded id
     S.Let xt e1 e2      -> gatherLet tEnv xt e1 e2
-    S.LetRec (S.Fundef {S.name=xt, S.args=yst, S.body=e1}) e2 ->gatherLetRec tEnv xt yst e1 e2
+    S.LetRec (S.Fundef {S.name=xt, S.args=yst, S.body=e1}) e2 ->
+      gatherLetRec tEnv xt yst e1 e2 
+      (\e1' e2' -> S.LetRec (S.Fundef {S.name=xt, S.args=yst, S.body=e1'}) e2')
     S.App e es          -> gatherApp tEnv e es
     S.Tuple es          -> gatherTuple tEnv es
     S.LetTuple xts e1 e2-> gatherLetTuple tEnv xts e1 e2
@@ -75,70 +84,112 @@ gatherC tEnv exp =
     S.Get e1 e2         -> gatherGet tEnv e1 e2
     S.Put e1 e2 e3      -> gatherPut tEnv e1 e2 e3
 
-insertC :: (T.T, T.T) -> TypingState ()
-insertC p = do{ (c,i) <- get; put (p:c, i)}
-genTypeVar :: TypingState T.TypeN
-genTypeVar = do{ (c,i) <- get; put (c,i+1); return $ i+1 }
-  
+insertC :: (T.T, T.T) -> TypingMonad ()
+insertC p = modify (p:)
 
-gatherDualOp tEnv e1 e2 ty =
-  do [t1,t2] <- mapM (gatherC tEnv) [e1,e2]
+gatherDualOp tEnv e1 e2 ty constr =
+  do [(e1', t1), (e2', t2)] <- mapM (gatherC tEnv) [e1,e2]
      mapM_ insertC [(t1,ty), (t2,ty)]
-     return ty
+     return (constr e1' e2', ty)
      
--- 実はザルな制約(e1,e2の型が同じなら通ってしまう)
-gatherCmp tEnv e1 e2 = do [t1,t2] <- mapM (gatherC tEnv) [e1,e2]                        
-                          insertC (t1,t2)
-                          return T.Bool
+-- (e1,e2の型が同じなら通ってしまう。型多相)
+gatherCmp tEnv e1 e2 constr = 
+  do [(e1', t1), (e2', t2)] <- mapM (gatherC tEnv) [e1,e2]                        
+     insertC (t1,t2)
+     return (constr e1' e2', T.Bool)
                       
-gatherIf tEnv e1 e2 e3 = do [t1,t2,t3] <- mapM (gatherC tEnv) [e1,e2,e3]          
-                            mapM_ insertC [(t1,T.Bool),(t2,t3)]
-                            return t2
+gatherIf tEnv e1 e2 e3 = 
+  do [(e1', t1),(e2', t2),(e3', t3)] <- mapM (gatherC tEnv) [e1,e2,e3]          
+     mapM_ insertC [(t1,T.Bool),(t2,t3)]
+     return (S.If e1' e2' e3', t2)
                                       
 gatherVar tEnv id = (case Mp.lookup id tEnv of
-                        Just ty -> return ty
+                        Just ty -> return (S.Var id, ty)
                         Nothing -> throwError ("ERROR: Unbound variable "++id))
                     
-gatherLet tEnv (x,t) e1 e2 = do t1 <- gatherC tEnv e1
+gatherLet tEnv (x,t) e1 e2 = do (e1', t1) <- gatherC tEnv e1
                                 insertC (t1,t)
-                                gatherC (Mp.insert x t tEnv) e2 >>= return
+                                (e2', t2) <-gatherC (Mp.insert x t tEnv) e2
+                                return (S.Let (x,t) e1' e2', t2)
 
-gatherLetRec tEnv (x,t) yts e1 e2 = 
-  do let tmp = foldl (\env (y, t) -> Mp.insert y t env) tEnv yts        -- 型環境に追加
-     t1 <- gatherC (Mp.insert x t tmp) e1                        --返り値の型推論
-     insertC (t, T.Fun (snd $ unzip yts) t1)
-     gatherC (Mp.insert x t tEnv) e2 >>= return         -- e2の型推論ではytsは無視
+gatherLetRec tEnv (x,t) yts e1 e2 constr = 
+  do let tmp = foldl (\env (y, t) -> Mp.insert y t env) tEnv yts -- 型環境に追加
+     newt1 <- (lift.lift) T.genTypeVar
+     insertC (t, T.Fun (snd $ unzip yts) newt1)         --e1を推論する前に制約追加(再帰)
+     (e1', t1) <- gatherC (Mp.insert x t tmp) e1                --返り値の型推論
+     insertC (t1, newt1)
+     (e2', t2) <- gatherC (Mp.insert x t tEnv) e2
+     return (constr e1' e2', t2)
                      
-gatherApp tEnv e es = do (t:ts) <- mapM (gatherC tEnv) (e:es)
-                         newRet <- fmap T.Var genTypeVar     -- 関数の返り値を型変数として生成
+gatherApp tEnv e es = do ((e', t):ets') <- mapM (gatherC tEnv) (e:es)
+                         let es' = fst $ unzip ets'
+                         let ts  = snd $ unzip ets'
+                         newRet <- (lift.lift) T.genTypeVar -- 関数の返り値を型変数として生成
                          insertC (T.Fun ts newRet, t)
-                         return newRet
+                         return (S.App e' es', newRet)
+     
+-- 部分適用的な何か -- (min-rtではtyping終わんなくなるので悲しい)
+-- gatherApp tEnv e es = 
+--   do ((e', t):ets') <- mapM (gatherC tEnv) (e:es)
+--      let es' = fst $ unzip ets'
+--      let ts  = snd $ unzip ets'
+--      cons <- lift get
+--      case unify cons of
+--        Left  msg    -> throwError msg
+--        Right dain   ->
+--          do -- let !_ = DT.trace (show dain++": "++show t++show e) ()
+--             case inferTypeNotInt dain t of      -- 勝手にintに解決しない奴
+--               T.Fun argts rett -> 
+--                 do (if length argts == length ts
+--                     then -- 普通の適用
+--                       do newRet <- (lift.lift) T.genTypeVar
+--                          insertC (T.Fun ts newRet, t)
+--                          return (S.App e' es', newRet)
+                         
+--                     else -- 部分適用
+--                       do let newts = drop (length es) argts
+--                          let newft = T.Fun newts rett
+--                          newys <- mapM ((lift.lift.lift).I.genTmpId) newts
+--                          newX  <- (lift.lift.lift) $ I.genNewId "PEfunc"
+--                          let newbody = S.App e (es ++ (map S.Var newys))
+--                          gatherC tEnv $ S.LetRec S.Fundef{S.name = (newX, newft)
+--                                                          ,S.args = zip newys newts
+--                                                          ,S.body = newbody} (S.Var newX)
+--                      )
+--               _                -> do newRet <- (lift.lift) T.genTypeVar
+--                                      insertC (T.Fun ts newRet, t)
+--                                      return (S.App e' es', newRet)
+---------------------
+
+gatherTuple tEnv es = do ets' <- mapM (gatherC tEnv) es
+                         let es' = fst $ unzip ets'
+                         let ts  = snd $ unzip ets'
+                         return (S.Tuple es', T.Tuple ts)
                     
-gatherTuple tEnv es = mapM (gatherC tEnv) es >>= return.T.Tuple
-                    
-gatherLetTuple tEnv xts e1 e2 = do t1 <- gatherC tEnv e1
+gatherLetTuple tEnv xts e1 e2 = do (e1', t1) <- gatherC tEnv e1
                                    insertC (T.Tuple (snd$unzip xts), t1)
                                    let tEnv' = foldr (\(x, t) -> Mp.insert x t) tEnv xts
-                                   gatherC tEnv' e2 >>= return
+                                   (e2', t2) <- gatherC tEnv' e2
+                                   return (S.LetTuple xts e1' e2', t2)
                               
-gatherArray tEnv e1 e2 = do t1 <- gatherC tEnv e1         -- size
-                            t2 <- gatherC tEnv e2         -- init elem
+gatherArray tEnv e1 e2 = do (e1', t1) <- gatherC tEnv e1         -- size
+                            (e2', t2) <- gatherC tEnv e2         -- init elem
                             insertC (T.Int, t1)
-                            return $ T.Array t2
+                            return (S.Array e1' e2', T.Array t2)
                        
-gatherGet tEnv e1 e2 = do t1 <- gatherC tEnv e1   -- array
-                          t2 <- gatherC tEnv e2   -- index
-                          newT <- fmap T.Var genTypeVar         -- elem type
+gatherGet tEnv e1 e2 = do (e1', t1) <- gatherC tEnv e1   -- array
+                          (e2', t2) <- gatherC tEnv e2   -- index
+                          newT <- (lift.lift) T.genTypeVar         -- elem type
                           insertC (t2, T.Int)
                           insertC (t1, T.Array newT)
-                          return newT
+                          return (S.Get e1' e2', newT)
                      
-gatherPut tEnv e1 e2 e3 = do t1 <- gatherC tEnv e1 -- array                     
-                             t2 <- gatherC tEnv e2 -- index
-                             t3 <- gatherC tEnv e3 -- put elem
+gatherPut tEnv e1 e2 e3 = do (e1', t1) <- gatherC tEnv e1 -- array                     
+                             (e2', t2) <- gatherC tEnv e2 -- index
+                             (e3', t3) <- gatherC tEnv e3 -- put elem
                              insertC (t2, T.Int)
                              insertC (t1, T.Array t3)
-                             return T.Unit
+                             return (S.Put e1' e2' e3', T.Unit)
                         
 -----------unify(制約の解決)------------------------------                        
 unify :: Constraints -> Either String Dainyu
@@ -147,8 +198,16 @@ unify ((t1,t2):set)     =
   case (t1,t2) of
       (T.Fun tArg1 tRet1, T.Fun tArg2 tRet2)
         -> if length tArg1 /= length tArg2
-           then throwError ("TYPE ERROR: function argSize is unmatched")
+           then throwError ("TYPE ERROR: function argSize is unmatched\n"
+                            ++(show t1)++" /= "++(show t2)++"\n")
            else unify $ foldr (:) set ((tRet1, tRet2):(zip tArg1 tArg2))
+    -- 部分適用用
+      -- (T.Fun tArg1 tRet1, T.Fun tArg2 tRet2)
+      --   -> if length tArg1 /= length tArg2
+      --      then (if length tArg1 > length tArg2
+      --            then unifyFunc tArg1 tRet1 tArg2 tRet2
+      --            else unifyFunc tArg2 tRet2 tArg1 tRet1)
+      --      else unify $ foldr (:) set ((tRet1, tRet2):(zip tArg1 tArg2))
       (T.Tuple ts1, T.Tuple ts2)
         -> if length ts1 /= length ts2
            then throwError ("TYPE ERROR: tuple size is unmatched")
@@ -169,6 +228,11 @@ unify ((t1,t2):set)     =
            else unify (substC n t set) >>= return.(Mp.insert n t)
       _ | t1 == t2 -> unify set
       _ | t1 /= t2 -> throwError ("TYPE ERROR: unify error: "++(show t1)++" /= "++(show t2))
+  -- where unifyFunc ts1 tr1 ts2 tr2 = -- ts1 > ts2
+  --         let ts1' = drop (length ts2) ts1 in
+  --         let ts1''= take (length ts2) ts1 in          
+  --         let newt1= T.Fun ts1'' (T.Fun ts1' tr1) in
+  --         unify ((newt1, T.Fun ts2 tr2):set)
 
   
 --制約集合中の型変数nをtに置き換える
@@ -245,3 +309,16 @@ inferType dain t =
                    Just t -> inferType dain t
                    Nothing -> T.Int)    -- 型が定まらなければIntとみなす
     _           -> t
+    
+
+--- 部分適用用 ---
+inferTypeNotInt :: Dainyu -> T.T -> T.T
+inferTypeNotInt dain t =
+  case t of
+    T.Fun ts t  -> T.Fun (map (inferTypeNotInt dain) ts) (inferTypeNotInt dain t)
+    T.Tuple ts  -> T.Tuple $ map (inferTypeNotInt dain) ts
+    T.Array t   -> T.Array (inferTypeNotInt dain t)
+    T.Var n     -> (case Mp.lookup n dain of
+                   Just t  -> inferTypeNotInt dain t
+                   Nothing -> t)
+    _           -> t    

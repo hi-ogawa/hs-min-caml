@@ -224,6 +224,8 @@ writeExp Tail exp = case exp of
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.FNeg _              -> do writeExp (NonTail (head A.fRegs)) exp
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
+  A.Fabs _              -> do writeExp (NonTail (head A.fRegs)) exp
+                              tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.Sqrt _              -> do writeExp (NonTail (head A.fRegs)) exp
                               tell $ printf "\t%s\t%s\n"                "jr" "$r31"
   A.FAdd _ _            -> do writeExp (NonTail (head A.fRegs)) exp
@@ -258,6 +260,16 @@ writeExp Tail exp = case exp of
                               tell $ printf "\t%s\t%s\n"                "jr" A.regSw
   A.CallDir (I.Label x) ys zs -> do writeArgs [] ys zs
                                     tell $ printf "\t%s\t%s\n"          "j"  x
+  -- 末尾呼び出し最適化をなくす
+  -- A.CallDir (I.Label x) ys zs -> 
+  --   do writeArgs [] ys zs
+  --      ss <- getStackSize ()
+  --      tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                   "sw" A.regRa (-ss) A.regSp        "call-dir"
+  --      tell $ printf "\t%s\t%s, %s, %d\t!%s\n"                   "addi" A.regSp A.regSp (-ss)      "call-dir"
+  --      tell $ printf "\t%s\t%s\n"                                "jal"  x
+  --      tell $ printf "\t%s\t%s, %s, %d\n"                        "addi" A.regSp A.regSp (ss)
+  --      tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"                   "lw" A.regRa (-ss) A.regSp        "call-dir"
+  --      tell $ printf "\t%s\t%s\n"                                "jr" "$r31"       
 
 ifTail :: I.Id->A.IdOrIm -> A.T->A.T -> String->String -> EmitMonad ()
 ifTail x y' e1 e2 brt brf = 

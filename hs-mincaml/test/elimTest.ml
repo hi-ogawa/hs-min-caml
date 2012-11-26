@@ -1,2 +1,2 @@
 let rec dummy x = x + x + x in
-print_char (1 + 1)
+print_int (1 + 1)

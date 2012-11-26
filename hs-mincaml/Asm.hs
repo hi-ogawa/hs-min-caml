@@ -72,7 +72,7 @@ isReg id | (take 2 id) == "$f" = True
 isReg _           = False
 
 ---汎用関数
-mySeq :: Exp -> T -> I.IdState T
+mySeq :: (Monad m) => Exp -> T -> I.IdStateT m T
 mySeq e1 e2 = do new <- I.genTmpId T.Unit
                  return $ Let (new, T.Unit) e1 e2
   

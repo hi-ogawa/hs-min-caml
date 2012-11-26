@@ -4,7 +4,7 @@ min_caml_print_char:
 min_caml_input_char:	
 	input	$r2
 	jr	$r31	
-min_caml_create_array:		! (引数) r2: size, r3: init elem
+min_caml_create_array:		! (引数) r2- size, r3- init elem
 	addi	$r4, $r2, 0	! r4にサイズ
 	ori	$r5, $r0, 0	! r5はindex <- sizeとの比較用に使うだけ
 	addi	$r2, $r30, 0	! 配列の先頭のアドレスを返り値にする
@@ -17,7 +17,7 @@ CREATE_ARRAY_CONTINUE:
 	addi	$r5, $r5, 1	! indexをずらす
 	j	CREATE_ARRAY_LOOP
 ! * create_float_array
-min_caml_create_float_array:	! (引数) r2: size, f0: init elem(float)
+min_caml_create_float_array:	! (引数) r2- size, f0- init elem(float)
 	addi	$r4, $r2, 0
 	ori	$r5, $r0, 0
 	addi	$r2, $r30, 0

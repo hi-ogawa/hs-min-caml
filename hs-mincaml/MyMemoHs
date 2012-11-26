@@ -262,7 +262,7 @@ OUTPUT:      49167	OUTPUT:      49167	OUTPUT:      49167
    ALL: 2212040307	   ALL: 2205328957	   ALL: 2195247418
 
 
-18>INLINE=60 (+ 最後にelimeqexp) resolved size: 15810	<<== これなかなかイケテル
+18>INLINE=60 (+ 最後にelimeqexp)  resolved size: 15810
 19>INLINE=120 (+ 最後にelimeqexp) resolved size: 31897
 
   HALT:          1	  HALT:          1
@@ -502,47 +502,49 @@ OUTPUT:      49167	OUTPUT:      49167	OUTPUT:      49167
 
 
 INLINE=50 (+ add fabs instruction) resolved size: 11816
+INLINE=50 (- elimexpeq )           resolved size: 11428
+INLINE=50 (+ elimjump )		   resolved size: 11428
 
-  HALT:          1	  HALT:          1
-   AND:          0	   AND:          0
-  ADDU:      48435	  ADDU:      48435
-  SUBU:      75708	  SUBU:      75708
-   SLT:     259595	   SLT:     259595
-    LW:  341295447	    LW:  341295447
-    SW:  142605603	    SW:  142605603
-   BEQ:          0	   BEQ:          0
-   BNE:    8620147	   BNE:    8620147
-  ADDI:  246251910	  ADDI:  246251910
-   ORI:     105279	   ORI:     105279
-   SLL:   98758416	   SLL:   98758416
-   SRA:       3434	   SRA:       3434
-   LUI:      82919	   LUI:      82919
-    JR:   40814999	    JR:   40814999
- INPUT:       1137	 INPUT:       1137
-OUTPUT:      49167	OUTPUT:      49167
-     J:   51882605**	     J:   61592197
-   JAL:   40814999	   JAL:   40814999
-  ADDS:   60141173	  ADDS:   60141173
-  SUBS:   54962184	  SUBS:   54962184
-  MULS:  117796314	  MULS:  117796314
-  DIVS:    1559312	  DIVS:    1559312
- FMOVE:   13696070**	 FMOVE:   13984837
-  FNEG:    2554688**	  FNEG:   18834169
-  CEQS:   11192320	  CEQS:   11192320
-  CLES:   50503688**	  CLES:   76492761
-   LFL:    7991052	   LFL:    7991052
-   LFH:    9634476	   LFH:    9634476
-  LWCL:  274726690	  LWCL:  274726690
-  SWCL:   35529789	  SWCL:   35529789
-  BCLT:          0	  BCLT:          0
-  BCLF:   61696008**	  BCLF:   87685081
-  SQRT:    2197817	  SQRT:    2197817
-  SLTI:    1996343	  SLTI:    1996343
-  SGTI:     660729	  SGTI:     660729
-  BNEI:  145753315	  BNEI:  145753315
-   LWR:   50808861	   LWR:   50808861
-   SWR:      71969	   SWR:      71969
- LWCLR:    1415388	 LWCLR:    1415388
- SWCLR:          0	 SWCLR:          0
-  FABS:   25989073**	   ALL: 1954813973
-   ALL: 1902547060
+  HALT:          1	  HALT:          1	  HALT:          1
+   AND:          0	   AND:          0	   AND:          0
+  ADDU:      48435	  ADDU:      48435	  ADDU:      48435
+  SUBU:      75708	  SUBU:      75708	  SUBU:      75708
+   SLT:     259595	   SLT:     259595	   SLT:     259595
+    LW:  341295447	    LW:  341189616	    LW:  341189616
+    SW:  142605603	    SW:  142488837	    SW:  142488837
+   BEQ:          0	   BEQ:          0	   BEQ:          0
+   BNE:    8620147	   BNE:    8620152	   BNE:    8620152
+  ADDI:  246251910	  ADDI:  247377277	  ADDI:  247377277
+   ORI:     105279	   ORI:     105279	   ORI:     105279
+   SLL:   98758416	   SLL:   98758416	   SLL:   98758416
+   SRA:       3434	   SRA:       3434	   SRA:       3434
+   LUI:      82919	   LUI:      82919	   LUI:      82919
+    JR:   40814999	    JR:   40817271	    JR:   40817271
+ INPUT:       1137	 INPUT:       1137	 INPUT:       1137
+OUTPUT:      49167	OUTPUT:      49167	OUTPUT:      49167
+     J:   51882605**	     J:   51892850	     J:   50769568--
+   JAL:   40814999	   JAL:   40817271	   JAL:   40817271
+  ADDS:   60141173	  ADDS:   60141173	  ADDS:   60141173
+  SUBS:   54962184	  SUBS:   54962184	  SUBS:   54962184
+  MULS:  117796314	  MULS:  117796314	  MULS:  117796314
+  DIVS:    1559312	  DIVS:    1559312	  DIVS:    1559312
+ FMOVE:   13696070**	 FMOVE:   13684631	 FMOVE:   13684631
+  FNEG:    2554688**	  FNEG:    2554688	  FNEG:    2554688
+  CEQS:   11192320	  CEQS:   11192320	  CEQS:   11192320
+  CLES:   50503688**	  CLES:   50503688	  CLES:   50503688
+   LFL:    7991052	   LFL:    7991052	   LFL:    7991052
+   LFH:    9634476	   LFH:    9634476	   LFH:    9634476
+  LWCL:  274726690	  LWCL:  274726715	  LWCL:  274726715
+  SWCL:   35529789	  SWCL:   35529809	  SWCL:   35529809
+  BCLT:          0	  BCLT:          0	  BCLT:          0
+  BCLF:   61696008**	  BCLF:   61696008	  BCLF:   61696008
+  SQRT:    2197817	  SQRT:    2197817	  SQRT:    2197817
+  SLTI:    1996343	  SLTI:    1996348	  SLTI:    1996348
+  SGTI:     660729	  SGTI:     660729	  SGTI:     660729
+  BNEI:  145753315	  BNEI:  145753315	  BNEI:  145753315
+   LWR:   50808861	   LWR:   50808861	   LWR:   50808861
+   SWR:      71969	   SWR:      71969	   SWR:      71969
+ LWCLR:    1415388	 LWCLR:    1415388	 LWCLR:    1415388
+ SWCLR:          0	 SWCLR:          0	 SWCLR:          0
+  FABS:   25989073**	  FABS:   25989073	  FABS:   25989073
+   ALL: 1902547060	   ALL: 1903453235	   ALL: 1902329953

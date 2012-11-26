@@ -38,7 +38,7 @@ gE sEnvI sEnvF e = case e of
     where e'' = gE sEnvI (Mp.insert x f sEnvF) e' 
   A.Let xt (A.SLL y i) e'   -> 
     case Mp.lookup y sEnvI of
-      Just yi -> let !_ = DT.trace ("simm: shiftL "++(show yi)++"<<"++(show i)++" = "++(show xt)) () in
+      Just yi -> -- let !_ = DT.trace ("simm: shiftL "++(show yi)++"<<"++(show i)++" = "++(show xt)) () in
         gE sEnvI sEnvF $ A.Let xt (A.Set $ shift yi i) e'
       Nothing -> A.Let xt (A.SLL y i) (gE sEnvI sEnvF e')
   A.Let xt (A.SRA y i) e'   -> 
@@ -67,16 +67,16 @@ gExp sEnvI sEnvF exp = case exp of
     let Just zi = Mp.lookup z sEnvI in gExp sEnvI sEnvF $ A.StF x y (A.C zi)
                                       
   A.Ld  x (A.C i)   | Mp.member x sEnvI -> 
-    let !_ = DT.trace ("IMMEDIATE-reg-offset1"++(show x)) () in
+    -- let !_ = DT.trace ("IMMEDIATE-reg-offset1"++(show x)) () in
     let Just xi = Mp.lookup x sEnvI in A.Ld A.regZr (A.C $ xi + i)
   A.St  x  y (A.C i)| Mp.member y sEnvI -> 
-    let !_ = DT.trace ("IMMEDIATE-reg-offset2"++(show y)) () in
+    -- let !_ = DT.trace ("IMMEDIATE-reg-offset2"++(show y)) () in
     let Just yi = Mp.lookup y sEnvI in A.St x A.regZr (A.C $ yi + i)
   A.LdF x (A.C i)   | Mp.member x sEnvI -> 
-    let !_ = DT.trace ("IMMEDIATE-reg-offset3"++(show x)) () in
+    -- let !_ = DT.trace ("IMMEDIATE-reg-offset3"++(show x)) () in
     let Just xi = Mp.lookup x sEnvI in A.LdF A.regZr (A.C $ xi + i)
   A.StF x  y (A.C i)| Mp.member y sEnvI -> 
-    let !_ = DT.trace ("IMMEDIATE-reg-offset4"++(show y)) () in
+    -- let !_ = DT.trace ("IMMEDIATE-reg-offset4"++(show y)) () in
     let Just yi = Mp.lookup y sEnvI in A.StF x A.regZr (A.C $ yi + i)
   -- immediate branch --
   A.IfEq x (A.V y) e1 e2 | Mp.member y sEnvI -> 

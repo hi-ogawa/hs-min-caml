@@ -1,1 +1,1 @@
-if not (1 > 2) then print_char 0 else print_char 1
+if not (1 > 2) then print_int 0 else print_int 1

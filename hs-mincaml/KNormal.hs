@@ -19,7 +19,7 @@ data T = Unit
        | Float Float
 --       | Not I.Id
        | Neg I.Id
-       | Add I.Id I.Id | Sub I.Id I.Id -- | Mul I.Id I.Id | Div I.Id I.Id 
+       | Add I.Id I.Id | Sub I.Id I.Id
        | SLL I.Id Int  | SRA I.Id Int
        | FNeg I.Id
        | Fabs I.Id         
@@ -43,17 +43,19 @@ data T = Unit
 data Fundef = Fundef {name :: (I.Id, T.T), args :: [(I.Id, T.T)], body :: T} 
               deriving (Eq, Ord)                
                        
-insertLet :: (T, T.T) -> (I.Id -> I.IdState (T, T.T)) -> I.IdState (T, T.T)
+insertLet :: (T, T.T) -> (I.Id -> I.IdState (T, T.T)) 
+             -> I.IdState (T, T.T)
 insertLet (Var x, _) k = k x
-insertLet (e, ty)      k = do{ newX <- I.genTmpId ty
-                             ; (e', ty') <- k newX
-                             ; return $ (Let (newX, ty) e e', ty') }
+insertLet (e, ty)    k = do{ newX <- I.genTmpId ty
+                           ; (e', ty') <- k newX
+                           ; return $ (Let (newX, ty) e e', ty') }
                            
-kNizeMain :: S.T -> (T, I.Counter)
-kNizeMain typedExp = 
-  let !_ = DT.trace ("knormalizing...") () in  
-  (kNizedExp, lastCounter)
-  where ((kNizedExp, _), lastCounter) = runState (kNize Mp.empty typedExp) 0
+kNizeMain :: S.T -> I.Counter -> (T, I.Counter)
+kNizeMain typedExp c = 
+  let !_ = DT.trace ("knormalizing...") () in
+  (kNizedExp, c')
+  where ((kNizedExp, _), c') = runState (kNize Mp.empty typedExp) c
+
 
 -----------K正規化---------------------
 kNize :: TypeEnv -> S.T -> I.IdState (T, T.T)
@@ -123,7 +125,7 @@ kNize tEnv exp = case exp of
   -- 外部変数無視
   S.Var x       -> (case Mp.lookup x tEnv of
                        Just t   -> return (Var x, t)
-                       Nothing  -> error ((show __FILE__)++(show __LINE__)))
+                       Nothing  -> error (show __FILE__++show __LINE__++show x++show tEnv))
   S.Let (x,t) e1 e2     
     -> do{ (e1', _) <- kNize tEnv e1
          ; (e2', t2) <- kNize (Mp.insert x t tEnv) e2
@@ -234,8 +236,6 @@ printKNormal exp dep =
     Sqrt x      -> "Sqrt: "++(show x)++"\n"    
     Add x1 x2   -> "Add: "++(show x1)++", "++(show x2)++"\n"
     Sub x1 x2   -> "Sub: "++(show x1)++", "++(show x2)++"\n"
-    -- Mul x1 x2   -> "Mul: "++(show x1)++", "++(show x2)++"\n"
-    -- Div x1 x2   -> "Div: "++(show x1)++", "++(show x2)++"\n"
     SLL x i     -> "SLL: "++(show x)++", "++(show i)++"\n"
     SRA x i     -> "SRA: "++(show x)++", "++(show i)++"\n"
     FAdd x1 x2  -> "FAdd: "++(show x1)++", "++(show x2)++"\n"

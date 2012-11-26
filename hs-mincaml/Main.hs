@@ -5,6 +5,7 @@ import qualified IdMod as I
 import qualified Syntax as S
 import qualified Lexer as L
 import qualified Parser as P
+--import qualified PartialEval as PE
 import qualified Typing as Typi
 -- import qualified Eval as E
 import qualified KNormal as K
@@ -22,6 +23,7 @@ import qualified Virtual as V
 import qualified Simm as SI
 import qualified RegAlloc as R
 import qualified Emit as E
+import qualified ElimJump as EJ
 import qualified ArgHandle as Arg
 
 {- Prelude> :set -package data-binary-ieee754 -}
@@ -54,54 +56,63 @@ compile name iter limit =
      libml    <- readFile libmlPath
      libasm   <- readFile libasmPath
      case test 100 iter limit (libml++source) of
-       Right output        -> writeFile (name++".s") (output++libasm)
+       Right output        -> writeFile (name++".s") (EJ.elimJumpMain (output++libasm))
+       -- Right output        -> writeFile (name++".s") (output++libasm)
        Left msg            -> putStr msg
        
 showTest :: Command -> FilePath -> Int -> Int -> IO ()       
 showTest com name iter limit =
   do contents <- readFile (name++".ml")
-     -- libml    <- readFile libmlPath
-     -- case test com iter limit (libml++contents) of       
-     case test com iter limit contents of              
+     libml    <- readFile libmlPath
+     case test com iter limit (libml++contents) of
+     -- case test com iter limit contents of
        Right st         -> putStr st
        Left  msg        -> putStr $ "ERROR: "++msg
       
 test :: Command -> Int -> Int -> String -> Either String String
 test com iter limit contents =
    do let !_ = DT.trace ("parsing...") () 
-      (parsedExp, lastN)           <- P.scanAndParse contents
+      (parsedExp, n0, c0)           <- P.scanAndParse contents
       if com == 0 then return $ show parsedExp else do
         
-      (_, typedExp)                <- Typi.typing parsedExp lastN
+      (typedExp, c0')               <- Typi.typiMain parsedExp c0 n0
       if com == 1 then return $ show typedExp else do      
         
-      let (kNizedExp, c0)             =  K.kNizeMain typedExp
-      if com == 2 then return $ show kNizedExp else do          
+        -- だめな部分適用
+      -- let (typedExp', c0'')             =  PE.partMain typedExp c0'
+      -- if com == 2 then return $ show typedExp' else do
         
-      let (alphaExp, c1)              =  Al.alphaMain kNizedExp c0
+      -- let (kNizedExp, c1)             =  K.kNizeMain typedExp' c0''
+      -- if com == 3 then return $ show kNizedExp else do
+        
+      let (kNizedExp, c1)             =  K.kNizeMain typedExp c0'
+      if com == 2 then return $ show kNizedExp else do
+        
+      let (alphaExp, c2)              =  Al.alphaMain kNizedExp c1
       if com == 3 then return $ show alphaExp else do          
         
       let !_ = DT.trace ("iter start...") ()                 
-      let (iteredExp, c2)              =  loopIter iter c1 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
-      -- let (iteredExp, c2)              =  loopIter iter c1 limit alphaExp
+      -- let (iteredExp, c3)              =  loopIter iter c2 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
+      let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
       if com == 4 then return $ show iteredExp else do
         
       let gloTup                        = G.globalMain iteredExp
-      if com == 5 then return $ show gloTup else do          
+      -- let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
+      if com == 5 then return $ show gloTup else do
         
       let (cloExp, fundefs0)          =  C.closMain gloTup iteredExp 
       if com == 6  then return $ (show cloExp)++(show fundefs0) else do
 
-      let ((virExp, fundefs1), c3) = V.virtMain gloTup (cloExp, reverse fundefs0) c2
+      let ((virExp, fundefs1), c4) = V.virtMain gloTup (cloExp, reverse fundefs0) c3
       if com == 7 then return $ (show virExp)++(show fundefs1) else do
               
       let (simmExp, fundefs2)          =  SI.simmMain (virExp, fundefs1)
       if com == 8 then return $ (show simmExp)++(show fundefs2) else do
         
-      let (prog@(regExp, fundefs3), c4) =  R.regAllocMain (simmExp, fundefs2) c3
+      let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4
       if com == 9 then return $ (show regExp)++(show fundefs3) else do          
         
-      let output                      =  E.emitMain (G.offset gloTup) prog c4
+      let output                      =  E.emitMain ((\(_,_,_,d)->d) gloTup) prog c5
       return $ output
       
 
