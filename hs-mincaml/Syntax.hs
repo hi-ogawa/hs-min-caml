@@ -9,6 +9,7 @@ data T = Unit
        | Float Float
        | Not T
        | Neg T
+       | AddP T T               -- polymorphism
        | Add T T | Sub T T
        | SLL T Int | SRA T Int
        | FNeg T
@@ -47,6 +48,7 @@ printSyntax exp dep =
     FNeg e      -> "FNeg\n"++(printE e)
     Fabs e      -> "Fabs\n"++(printE e)
     Sqrt e      -> "Sqrt\n"++(printE e)    
+    AddP e1 e2   -> "AddP\n"++(printE e1)++(printE e2)    
     Add e1 e2   -> "Add\n"++(printE e1)++(printE e2)
     Sub e1 e2   -> "Sub\n"++(printE e1)++(printE e2)
     SLL e i     -> "SLL: "++(show i)++"\n"++(printE e)

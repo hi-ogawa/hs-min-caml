@@ -35,6 +35,7 @@ $white+		;
 \-		{ mkT MINUS }
 \*		{ mkT AST }
 \/		{ mkT SLASH }
+"++"		{ mkT PLUS_PLUS }	-- polymorphism
 "+."		{ mkT PLUS_DOT }
 "-."		{ mkT MINUS_DOT }
 "*."		{ mkT AST_DOT }
@@ -154,6 +155,7 @@ data Token = INT Int
            | FLOAT Float
            | BOOL Bool
            | IDENT String
+	   | PLUS_PLUS		-- polymorphism
            | PLUS  | MINUS  | AST  | SLASH 
            | PLUS_DOT  | MINUS_DOT  | AST_DOT  | SLASH_DOT 
            | EQUAL  | LESS_GREATER  | LESS_EQUAL  | GREATER_EQUAL  

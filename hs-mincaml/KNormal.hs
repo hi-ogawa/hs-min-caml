@@ -77,6 +77,17 @@ kNize tEnv exp = case exp of
   S.Sqrt e      -> do et <- kNize tEnv e
                       insertLet et
                         (\x -> return (Sqrt x, T.Float))
+  -- polymorphism                        
+  S.AddP e1 e2  -> do [et1@(e1', t1), et2@(e2', t2)] <- mapM (kNize tEnv) [e1, e2]
+                      insertLet et1
+                        (\x -> insertLet et2
+                               (\y -> (case t1 of
+                                          T.Int   -> return ((Add x y),  T.Int)
+                                          T.Float -> return ((FAdd x y), T.Float)
+                                          _       -> error (show __FILE__)
+                                      )
+                               )
+                        )
   S.Add e1 e2   -> do [et1, et2] <- mapM (kNize tEnv) [e1, e2]
                       insertLet et1
                         (\x -> insertLet et2
@@ -145,7 +156,7 @@ kNize tEnv exp = case exp of
     where bind :: [I.Id] -> [(T, T.T)] -> I.Id -> T.T -> I.IdState (T, T.T)
           bind xs []             f tRet  = return (ExtFunApp f xs, tRet)
           bind xs (eArgt:eArgts) f tRet  = insertLet eArgt
-                                                (\x -> bind (xs++[x]) eArgts f tRet) 
+                                                (\x -> bind (xs++[x]) eArgts f tRet)
   S.App e es    -> do{ (etf@(ef',tf'):ets') <- mapM (kNize tEnv) (e:es)
                      ; case tf' of
                           T.Fun _ tRet  -> insertLet etf (\f -> bind [] ets' f tRet)

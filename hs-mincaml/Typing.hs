@@ -61,6 +61,9 @@ gatherC tEnv exp =
     S.FNeg e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.FNeg e', T.Float) }
     S.Fabs e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.Fabs e', T.Float) }
     S.Sqrt e    -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Float); return (S.Sqrt e', T.Float) }
+    S.AddP e1 e2-> do{ [(e1', t1), (e2', t2)] <- mapM (gatherC tEnv) [e1,e2]
+                     ; insertC (t1, t2)
+                     ; return (S.AddP e1' e2', t1) }
     S.Add e1 e2 -> gatherDualOp tEnv e1 e2 T.Int S.Add
     S.Sub e1 e2 -> gatherDualOp tEnv e1 e2 T.Int S.Sub
     S.SLL e i   -> do{ (e', t) <- gatherC tEnv e; insertC (t, T.Int); return (S.SLL e' i, T.Int) }
@@ -271,6 +274,7 @@ inferExp dain exp = case exp of
   S.FNeg e      -> S.FNeg (inferE' e)
   S.Fabs e      -> S.Fabs (inferE' e)  
   S.Sqrt e      -> S.Sqrt (inferE' e)  
+  S.AddP e1 e2   -> S.AddP (inferE' e1) (inferE' e2)  
   S.Add e1 e2   -> S.Add (inferE' e1) (inferE' e2)
   S.Sub e1 e2   -> S.Sub (inferE' e1) (inferE' e2)
   S.SLL e i     -> S.SLL (inferE' e) i

@@ -20,7 +20,7 @@
 (*   if a < 0.0 then -. a *)
 (*   else a *)
 (* in *)
-let rec abs_float x = fabs x in	(**)
+let rec abs_float x = fabs x in
 let rec fneg a = -. a in
 let rec fhalf a = a *. 0.5 in
 let rec fsqr a = a *. a in

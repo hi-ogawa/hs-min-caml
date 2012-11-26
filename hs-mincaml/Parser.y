@@ -23,6 +23,7 @@ float	{ FLOAT $$ }
 bool	{ BOOL $$ }
 id	{ IDENT $$ }
 not     { NOT }
+"++"    { PLUS_PLUS }
 "+"	{ PLUS }
 "-"	{ MINUS }
 "*"	{ AST }
@@ -71,7 +72,7 @@ array	{ ARRAY }
 %right "<-"
 %left ","
 %left "=" "<>" "<=" ">=" "<" ">"
-%left "+" "-" "+." "-."
+%left "+" "-" "+." "-." "++"
 %left "*" "/" "*." "/."
 %right P_NEG
 %left P_APP "sqrt" "fequal" "fless" "fispos" "fisneg" "fiszero" "xor" "fabs"
@@ -82,6 +83,7 @@ array	{ ARRAY }
 E :: { S.T }
 	: SimpleE		{ $1 }
         | not E                 { S.Not $2 }
+        | E "++" E		{ S.AddP $1 $3 }
 	| E "+" E		{ S.Add $1 $3 }	
 	| E "-" E		{ S.Sub $1 $3 }	
 	| E "*" E		{ sllOrMul $1 $3 }	

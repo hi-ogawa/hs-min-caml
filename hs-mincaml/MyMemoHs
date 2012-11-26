@@ -548,3 +548,49 @@ OUTPUT:      49167	OUTPUT:      49167	OUTPUT:      49167
  SWCLR:          0	 SWCLR:          0	 SWCLR:          0
   FABS:   25989073**	  FABS:   25989073	  FABS:   25989073
    ALL: 1902547060	   ALL: 1903453235	   ALL: 1902329953
+
+INLINE=500 (+inline reccheck) resolved size: 15798
+
+  HALT:          1
+   AND:          0
+  ADDU:      48435
+  SUBU:      75708
+   SLT:     259595
+    LW:  292665896
+    SW:   63580382
+   BEQ:          0
+   BNE:    8620152
+  ADDI:  159717016
+   ORI:     105279
+   SLL:   97442878
+   SRA:       3434
+   LUI:      82919
+    JR:   20128393
+ INPUT:       1137
+OUTPUT:      49167
+     J:   61467554
+   JAL:   20128393
+  ADDS:   60141173
+  SUBS:   54962184
+  MULS:  117796314
+  DIVS:    1559312
+ FMOVE:    9257165
+  FNEG:    2554688
+  CEQS:   11192320
+  CLES:   50503688
+   LFL:    7991052
+   LFH:    9634476
+  LWCL:  264739753
+  SWCL:   27523010
+  BCLT:          0
+  BCLF:   61696008
+  SQRT:    2197817
+  SLTI:    1996348
+  SGTI:     660729
+  BNEI:  145736931
+   LWR:   50785821
+   SWR:      71969
+ LWCLR:     122890
+ SWCLR:          0
+  FABS:   25989073
+   ALL: 1631489060

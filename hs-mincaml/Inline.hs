@@ -23,7 +23,8 @@ f exp limit = g Mp.empty exp
         K.LetRec K.Fundef{K.name=(x,t), K.args=yts, K.body=e1} e2 ->
           do [e1', e2'] <- mapM (g iEnv') [e1, e2]
              return $ K.LetRec K.Fundef{K.name=(x,t), K.args=yts, K.body=e1'} e2'
-          where iEnv' = (if getSize e1 <= limit 
+          where iEnv' = (if (not (recCheck e1 x) && getSize e1 <= limit)
+                            || getSize e1 <= (limit `div` 10)
                          then Mp.insert x ((fst.unzip) yts, e1) iEnv
                          else iEnv)
         K.App x ys | Mp.member x iEnv -> do let !_ =DT.trace("inline: "++(show x))""
@@ -39,7 +40,19 @@ f exp limit = g Mp.empty exp
         K.LetTuple xts y e1   -> do e1' <- g iEnv e1
                                     return $ K.LetTuple xts y e1'
         _                     -> return exp
-  
+        
+recCheck :: K.T -> I.Id -> Bool
+recCheck fbody fname = 
+  case fbody of
+    K.App x ys        -> if or $ map (x==) (x:ys) then True else False
+    K.LetRec K.Fundef{K.name=_, K.args=_, K.body=e1} e2 ->
+      recCheck e1 fname || recCheck e2 fname
+    K.IfEq x y e1 e2            -> recCheck e1 fname || recCheck e2 fname
+    K.IfLe x y e1 e2            -> recCheck e1 fname || recCheck e2 fname
+    K.Let x e1 e2               -> recCheck e1 fname || recCheck e2 fname
+    K.LetTuple xts y e1         -> recCheck e1 fname
+    _                           -> False
+    
 getSize :: K.T -> Int
 getSize exp = case exp of
   K.IfEq _ _ e1 e2                      -> 1 + (getSize e1) + (getSize e2)

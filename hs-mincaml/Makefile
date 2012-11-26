@@ -29,5 +29,5 @@ sim:
 	cd ../simulator; make
 
 clean:
-	rm -rf Main
+	rm -rf Main Lexer.hs Parser.hs
 	cd ../simulator; make clean
