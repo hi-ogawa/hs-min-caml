@@ -5,6 +5,7 @@ import qualified Type as T
 import qualified IdMod as I
 import qualified Syntax as S
 
+import Data.List(nub, (\\))
 import qualified Data.Map as Mp
 import qualified Data.Set as St
 import Control.Monad.State
@@ -107,17 +108,55 @@ gatherIf tEnv e1 e2 e3 =
      return (S.If e1' e2' e3', t2)
                                       
 gatherVar tEnv id = (case Mp.lookup id tEnv of
+                        Just (T.Schema ns ty) -> 
+                          do ty' <- foldM (\ty n -> do newt <- (lift.lift) T.genTypeVar
+                                                       return $ substType n newt ty
+                                          ) ty ns
+                             return (S.Var id, ty')
                         Just ty -> return (S.Var id, ty)
                         Nothing -> throwError ("ERROR: Unbound variable "++id))
-                    
+
 gatherLet tEnv (x,t) e1 e2 = do (e1', t1) <- gatherC tEnv e1
                                 insertC (t1,t)
                                 (e2', t2) <-gatherC (Mp.insert x t tEnv) e2
                                 return (S.Let (x,t) e1' e2', t2)
+                                
+-- polymorphism --------------------------------------------
+-- gatherLetRec tEnv (x,t) yts e1 e2 constr = 
+--   do let tmp = foldl (\env (y, t) -> Mp.insert y t env) tEnv yts -- 型環境に追加
+--      newt1 <- (lift.lift) T.genTypeVar                  -- 返り値の型変数
+--      insertC (t, T.Fun (snd $ unzip yts) newt1)         -- e1を推論する前に制約追加(再帰)
+--      (e1', t1) <- gatherC (Mp.insert x t tmp) e1                --返り値の型推論
+--      -- cons を unify
+--      cons <- lift get
+--      case unify cons of
+--        Left msg         -> throwError msg
+--        Right dain       ->
+--          do let eInfered    = inferExpNotInt  dain e1'
+--             let tInfered    = inferTypeNotInt dain t1
+--             let tEnvInfered = Mp.map (inferTypeNotInt dain) tEnv
+--             let polyVars    = getPolys tEnvInfered tInfered
+--             let !_ = DT.trace (show dain++"\n"++show tEnvInfered++"\n"++show polyVars) ()
+--             lift $ put []
+--             (e2', t2) <- gatherC (Mp.insert x (T.Schema polyVars tInfered) tEnvInfered) e2
+--             return (constr e1' e2', t2)
 
+-- getPolys :: TypeEnv -> T.T -> [T.TypeN]
+-- getPolys tEnv ty = (\\) vars (nub $ concatMap getVars $ Mp.elems tEnv)
+--   where vars = getVars ty
+        
+-- getVars ty = case ty of
+--   T.Var n       -> [n]
+--   T.Fun ts t    -> concatMap getVars ts ++ getVars t
+--   T.Tuple  ts   -> concatMap getVars ts
+--   T.Array  t    -> getVars t
+--   T.Schema ns t -> ns ++ getVars t
+--   _             -> []
+-------------------------------------------------------------
+     
 gatherLetRec tEnv (x,t) yts e1 e2 constr = 
   do let tmp = foldl (\env (y, t) -> Mp.insert y t env) tEnv yts -- 型環境に追加
-     newt1 <- (lift.lift) T.genTypeVar
+     newt1 <- (lift.lift) T.genTypeVar                  -- 返り値の型変数
      insertC (t, T.Fun (snd $ unzip yts) newt1)         --e1を推論する前に制約追加(再帰)
      (e1', t1) <- gatherC (Mp.insert x t tmp) e1                --返り値の型推論
      insertC (t1, newt1)
@@ -310,12 +349,52 @@ inferType dain t =
     T.Tuple ts  -> T.Tuple $ map (inferType dain) ts
     T.Array t   -> T.Array (inferType dain t)
     T.Var n     -> (case Mp.lookup n dain of
-                   Just t -> inferType dain t
-                   Nothing -> T.Int)    -- 型が定まらなければIntとみなす
+                       Just t -> inferType dain t
+                       Nothing -> T.Int)    -- 型が定まらなければIntとみなす
     _           -> t
     
 
---- 部分適用用 ---
+-- 型多相用
+inferExpNotInt :: Dainyu -> S.T -> S.T
+inferExpNotInt dain exp = case exp of
+  S.Unit        -> S.Unit
+  S.Bool b      -> S.Bool b
+  S.Int i       -> S.Int i
+  S.Float f     -> S.Float f
+  S.Not e       -> S.Not (inferE' e)
+  S.Neg e       -> S.Neg (inferE' e)
+  S.FNeg e      -> S.FNeg (inferE' e)
+  S.Fabs e      -> S.Fabs (inferE' e)  
+  S.Sqrt e      -> S.Sqrt (inferE' e)  
+  S.AddP e1 e2  -> S.AddP (inferE' e1) (inferE' e2)  
+  S.Add e1 e2   -> S.Add (inferE' e1) (inferE' e2)
+  S.Sub e1 e2   -> S.Sub (inferE' e1) (inferE' e2)
+  S.SLL e i     -> S.SLL (inferE' e) i
+  S.SRA e i     -> S.SRA (inferE' e) i
+  S.FAdd e1 e2	-> S.FAdd (inferE' e1) (inferE' e2)
+  S.FSub e1 e2	-> S.FSub (inferE' e1) (inferE' e2)
+  S.FMul e1 e2	-> S.FMul (inferE' e1) (inferE' e2)
+  S.FDiv e1 e2	-> S.FDiv (inferE' e1) (inferE' e2)
+  S.Eq e1 e2    -> S.Eq (inferE' e1) (inferE' e2)
+  S.Le e1 e2    -> S.Le (inferE' e1) (inferE' e2)
+  S.If e1 e2 e3 -> S.If (inferE' e1) (inferE' e2) (inferE' e3)
+  S.Var x       -> S.Var x
+  S.Let (x,t) e1 e2     ->  S.Let (x, (inferT' t)) (inferE' e1) (inferE' e2)
+  S.LetRec (S.Fundef{S.name=(x,t), S.args=yts, S.body=e1}) e2 
+    -> S.LetRec (S.Fundef {S.name=(x, (inferT' t)), S.args=args', S.body=e1'}) e2'
+      where args' = inferTMap yts
+            e1'   = inferE' e1
+            e2'   = inferE' e2
+  S.App e es    -> S.App (inferE' e) (map inferE' es)
+  S.Tuple es    -> S.Tuple $ map inferE' es
+  S.LetTuple xts e1 e2  -> S.LetTuple (inferTMap xts) (inferE' e1) (inferE' e2)
+  S.Array e1 e2 -> S.Array (inferE' e1) (inferE' e2)
+  S.Get e1 e2   -> S.Get (inferE' e1) (inferE' e2)
+  S.Put e1 e2 e3        -> S.Put (inferE' e1) (inferE' e2) (inferE' e3)
+  where inferE' = inferExpNotInt dain --書くのを短縮
+        inferT' = inferTypeNotInt dain
+        inferTMap = map (\(x,t) -> (x, (inferT' t)))
+    
 inferTypeNotInt :: Dainyu -> T.T -> T.T
 inferTypeNotInt dain t =
   case t of
@@ -325,4 +404,4 @@ inferTypeNotInt dain t =
     T.Var n     -> (case Mp.lookup n dain of
                    Just t  -> inferTypeNotInt dain t
                    Nothing -> t)
-    _           -> t    
+    _           -> t

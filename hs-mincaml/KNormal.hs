@@ -137,6 +137,11 @@ kNize tEnv exp = case exp of
   S.Var x       -> (case Mp.lookup x tEnv of
                        Just t   -> return (Var x, t)
                        Nothing  -> error (show __FILE__++show __LINE__++show x++show tEnv))
+                   
+  -- ikuta ---             
+  -- S.Let (x,t) (S.If e e1 e2) e3 -> kNize tEnv $ S.If e (S.Let (x,t) e1 e3) (S.Let (x,t) e2 e3)
+  ------------
+  
   S.Let (x,t) e1 e2     
     -> do{ (e1', _) <- kNize tEnv e1
          ; (e2', t2) <- kNize (Mp.insert x t tEnv) e2

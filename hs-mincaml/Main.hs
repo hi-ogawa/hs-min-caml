@@ -63,9 +63,9 @@ compile name iter limit =
 showTest :: Command -> FilePath -> Int -> Int -> IO ()       
 showTest com name iter limit =
   do contents <- readFile (name++".ml")
-     libml    <- readFile libmlPath
-     case test com iter limit (libml++contents) of
-     -- case test com iter limit contents of
+     -- libml    <- readFile libmlPath
+     -- case test com iter limit (libml++contents) of
+     case test com iter limit contents of
        Right st         -> putStr st
        Left  msg        -> putStr $ "ERROR: "++msg
       
@@ -92,8 +92,8 @@ test com iter limit contents =
       if com == 3 then return $ show alphaExp else do          
         
       let !_ = DT.trace ("iter start...") ()                 
-      -- let (iteredExp, c3)              =  loopIter iter c2 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
-      let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
+      let (iteredExp, c3)              =  loopIter iter c2 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
+      -- let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
       if com == 4 then return $ show iteredExp else do
         
       let gloTup                        = G.globalMain iteredExp

@@ -12,6 +12,7 @@ data T = Unit
        | Tuple [T]
        | Array T
        | Var TypeN
+       | Schema [TypeN] T
          deriving (Show, Eq, Ord)
 
 -- 型変数はIntで一意に表現

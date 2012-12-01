@@ -29,6 +29,9 @@ extern vector<inst> insts;
 extern map<int,string> addrToLabel;
 extern map<string, int> labelNames;
 
+clock_t start;
+clock_t now;
+
 int simulator(){
   for(int i=0; i < DATA_RAM_SIZE/4; i++){	// ram初期化
     ram[i] = 0;
@@ -40,11 +43,14 @@ int simulator(){
     pcStatistics.push_back(0);
   }
 
+  start = clock();
+
   if(cont){	// -c のオプションの時
-    while(1){
-      if(halt) break;
-      execInst(insts[pc]);
+    while(!halt){
+      execInst();
     }
+    now = clock();
+    cerr << (double)(now - start) / CLOCKS_PER_SEC << endl;
   }
   else{
     cerr << "debug mode" << endl;
@@ -63,7 +69,7 @@ int simulator(){
 
 	print = false;
 	while(pc != num){
-	  execInst(insts[pc]);
+	  execInst();
 	}
 	showRegs();
 	cerr <<"instNum: "<< inst_num << endl;
@@ -75,7 +81,7 @@ int simulator(){
 	print = false;
 	int funcPc = labelNames[func];
 	while(pc != funcPc){
-	  execInst(insts[pc]);
+	  execInst();
 	}
 	showRegs();
 	cerr <<"instNum: "<< inst_num << endl;
@@ -84,7 +90,7 @@ int simulator(){
 	print = false;
 	while(1){
 	  if(halt) break;
-	  execInst(insts[pc]);
+	  execInst();
 	}
       }
       else if(command == "showPcStat"){
@@ -95,7 +101,7 @@ int simulator(){
       }
       else{
 	print = true;
-	execInst(insts[pc]);
+	execInst();
 	showRegs();
       }
 
@@ -154,316 +160,303 @@ int stepx(ULLI num){
     if(halt){
       return 0;
     }
-    execInst(insts[pc]);
+    execInst();
   }
   return 0;
 }
 
-void execInst(inst nowi){
+void execInst(void){
 
-  if(ireg[29] <= min_sp) min_sp = ireg[29];  
-  // if(inst_num % 10000000 == 0){
-  //   cerr << "inst_num: " << inst_num << ", heap: " << ireg[30] << endl;
-  // }
-
-  if(print){
-    if(addrToLabel.find(pc) != addrToLabel.end())
-      cerr << "pc: " << pc << ", label: " << addrToLabel.find(pc)->second << endl;
-    else 
-      cerr << "pc: " << pc << endl;
-    cerr << nowi.line;
-    cerr <<"name:"<< nowi.name <<", rs:"<< nowi.rs;
-    cerr <<", rt:"<< nowi.rt <<",rd:"<< nowi.rd;
-    cerr <<", sham:"<< nowi.sh <<", imme:"<< nowi.im <<", im2:"<< nowi.im2<< endl;
+  // if(ireg[29] <= min_sp) min_sp = ireg[29];  
+  if(inst_num % 100000000 == 0){
+    // cerr << "inst_num: " << inst_num << ", heap: " << ireg[30] << endl;
+    now = clock();
+    cerr << (double)(now - start) / CLOCKS_PER_SEC << endl << endl;
   }
+
+  // if(print){
+  //   if(addrToLabel.find(pc) != addrToLabel.end())
+  //     cerr << "pc: " << pc << ", label: " << addrToLabel.find(pc)->second << endl;
+  //   else 
+  //     cerr << "pc: " << pc << endl;
+  //   cerr << nowi.line;
+  //   cerr <<"name:"<< nowi.name <<", rs:"<< nowi.rs;
+  //   cerr <<", rt:"<< insts[nowpc].rt <<",rd:"<< insts[nowpc].rd;
+  //   cerr <<", sham:"<< insts[nowpc].sh <<", imme:"<< insts[nowpc].im <<", im2:"<< insts[nowpc].im2<< endl;
+  // }
   pcStatistics[pc] = pcStatistics[pc] + 1;
   inst_num ++;
+  int nowpc = pc;
   pc ++;
 
-
-  if(nowi.op == 0x4 && nowi.rs == 0 && nowi.rt == 0 && nowi.im==-1){//nowi.name == "halt" 一番最初に持ってくる(beqとopcodeかぶってるから)
-    instStatistics[HALT] ++;
-    halt = true;
-  }
-  else if(nowi.op == 0x0 && nowi.fu == 0x24){	//nowi.name == "and"
-    instStatistics[AND] ++;
-    ireg[nowi.rd] = ireg[nowi.rs] & ireg[nowi.rt];
-  }
-  else if(nowi.op == 0x0 && nowi.fu == 0x21){	//nowi.name == "addu"
-    instStatistics[ADDU] ++;
-    ireg[nowi.rd] = ireg[nowi.rs] + ireg[nowi.rt];
-  }
-  else if(nowi.op == 0x0 && nowi.fu == 0x23){	//nowi.name == "subu"
-    instStatistics[SUBU] ++;
-    ireg[nowi.rd] = ireg[nowi.rs] - ireg[nowi.rt];
-  }
-  else if(nowi.op == 0x0 && nowi.fu == 0x2a){//nowi.name == "slt"
-    instStatistics[SLT] ++;
-    if(ireg[nowi.rs] < ireg[nowi.rt]) ireg[nowi.rd] = 1;
-    else ireg[nowi.rd] = 0;
-  }
-  // 追加 //
-  else if(nowi.op == 0x0 && nowi.fu == 0x2b){//nowi.name == "slti"
-    instStatistics[SLTI] ++;
-    if(ireg[nowi.rs] < nowi.im) ireg[nowi.rt] = 1;
-    else ireg[nowi.rt] = 0;
-  }
-  else if(nowi.op == 0x0 && nowi.fu == 0x2c){//nowi.name == "sgti"
-    instStatistics[SGEI] ++;
-    if(ireg[nowi.rs] > nowi.im) ireg[nowi.rt] = 1;
-    else ireg[nowi.rt] = 0;
-  }
-
-
-  else if(nowi.op == 0x23){//nowi.name == "lw"
+  if(insts[nowpc].op == 0x23){//insts[nowpc].name == "lw"
     instStatistics[LW] ++;
-    int addr = ireg[nowi.rs] + nowi.im;
+    int addr = ireg[insts[nowpc].rs] + insts[nowpc].im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
-      ireg[nowi.rt] = ram[addr/4];
+      ireg[insts[nowpc].rt] = ram[addr/4];
     }
     else{
       cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
-      cerr << nowi.line << endl;
+      cerr << insts[nowpc].line << endl;
       cerr << "inst_num: " << inst_num << endl;
       cerr << ", addr: " << addr << endl;
     }
   }
-  else if(nowi.op == 0x2b){	//nowi.name == "sw"
-    instStatistics[SW] ++;
-    int addr = ireg[nowi.rs] + nowi.im;
+  else if(insts[nowpc].op == 0x31){//insts[nowpc].name == "lwcl"
+    instStatistics[LWCL] ++;
+    int addr = ireg[insts[nowpc].rs] + insts[nowpc].im;
     if(0 <= addr && addr <= DATA_RAM_SIZE){
-      ram[addr/4] = ireg[nowi.rt];
-    }
-    else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
-      cerr << nowi.line << endl;
-      cerr << "inst_num: " << inst_num << endl;
+      conv c1;
+      c1.i = ram[addr/4];
+      freg[insts[nowpc].rt] = c1.f;
+    }else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
       cerr << ", addr: " << addr << endl;
+      cerr << insts[nowpc].line << endl;
+      showRegs();
     }
   }
-  // 追加 //
-  else if(nowi.op == 0x24){//nowi.name == "lwr"
-    instStatistics[LWR] ++;
-    int addr = ireg[nowi.rt] + ireg[nowi.rs];
-    if(0 <= addr && addr <= DATA_RAM_SIZE){
-      ireg[nowi.rd] = ram[addr/4];
-    }
-    else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
-      cerr << nowi.line << endl;
-      cerr << "inst_num: " << inst_num << endl;
-      cerr << ", addr: " << addr << endl;
-    }
-  }
-  else if(nowi.op == 0x2c){	//nowi.name == "swr"
-    instStatistics[SWR] ++;
-    int addr = ireg[nowi.rt] + ireg[nowi.rs];
-    if(0 <= addr && addr <= DATA_RAM_SIZE){
-      ram[addr/4] = ireg[nowi.rd];
-    }
-    else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
-      cerr << nowi.line << endl;
-      cerr << "inst_num: " << inst_num << endl;
-      cerr << ", addr: " << addr << endl;
-    }
-  }
-
-  else if(nowi.op == 0x04){//nowi.name == "beq"
-    instStatistics[BEQ] ++;
-    if(ireg[nowi.rt] == ireg[nowi.rs]) pc += nowi.im;
-  }
-  else if(nowi.op == 0x05){//nowi.name == "bne"
-    instStatistics[BNE] ++;
-    if(ireg[nowi.rt] != ireg[nowi.rs]) pc += nowi.im;
-  }
-  // 追加 //
-  else if(nowi.op == 0x07){//nowi.name == "bnei"
-    instStatistics[BNEI] ++;
-    if(ireg[nowi.rt] != nowi.im2) pc += nowi.im;
-  }
-
-
-  else if(nowi.op == 0x8){//nowi.name == "addi"
+  else if(insts[nowpc].op == 0x8){//insts[nowpc].name == "addi"
     instStatistics[ADDI] ++;
-    ireg[nowi.rt] = ireg[nowi.rs] + nowi.im;
+    ireg[insts[nowpc].rt] = ireg[insts[nowpc].rs] + insts[nowpc].im;
   }
-  else if(nowi.op == 0x0d){//nowi.name == "ori"
-    instStatistics[ORI] ++;
-    ireg[nowi.rt] = ireg[nowi.rs] | nowi.im;
+  else if(insts[nowpc].op == 0x07){//insts[nowpc].name == "bnei"
+    instStatistics[BNEI] ++;
+    if(ireg[insts[nowpc].rt] != insts[nowpc].im2) pc += insts[nowpc].im;
   }
-  else if(nowi.op == 0x00 && nowi.fu == 0x00){	//nowi.name == "sll"
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x2){//insts[nowpc].name == "mul.s"
+    instStatistics[MULS] ++;
+    freg[insts[nowpc].rd] = freg[insts[nowpc].rs] * freg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x00 && insts[nowpc].fu == 0x00){	//insts[nowpc].name == "sll"
     instStatistics[SLL] ++;
-    ireg[nowi.rd] = ireg[nowi.rs] << nowi.sh;
+    ireg[insts[nowpc].rd] = ireg[insts[nowpc].rs] << insts[nowpc].sh;
   }
-  else if(nowi.op == 0x00 && nowi.fu == 0x03){	//nowi.name == "sra"
-    instStatistics[SRA] ++;
-    ireg[nowi.rd] = ireg[nowi.rs] >> nowi.sh;
+  else if(insts[nowpc].op == 0x2b){	//insts[nowpc].name == "sw"
+    instStatistics[SW] ++;
+    int addr = ireg[insts[nowpc].rs] + insts[nowpc].im;
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ram[addr/4] = ireg[insts[nowpc].rt];
+    }
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << insts[nowpc].line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
   }
-
-  else if(nowi.op == 0x0f){	//nowi.name == "lui"
-    instStatistics[LUI] ++;
-    ireg[nowi.rt] = (nowi.im * 0x10000) & 0xFFFF0000;
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x8 && insts[nowpc].rt == 0x0){//insts[nowpc].name == "bclf"
+    instStatistics[BCLF] ++;
+    if(fpcond == 0)
+      pc += insts[nowpc].im;
   }
-  // 注意
-  else if(nowi.op == 0x00 && nowi.fu == 0x08){//nowi.name == "jr"
+  else if(insts[nowpc].op == 0x02){	//insts[nowpc].name == "j"
+    instStatistics[J] ++;
+    pc = insts[nowpc].im;
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x0){//insts[nowpc].name == "add.s"
+    instStatistics[ADDS] ++;
+    freg[insts[nowpc].rd] = freg[insts[nowpc].rs] + freg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x1){//insts[nowpc].name == "sub.s"
+    instStatistics[SUBS] ++;
+    freg[insts[nowpc].rd] = freg[insts[nowpc].rs] - freg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x24){//insts[nowpc].name == "lwr"
+    instStatistics[LWR] ++;
+    int addr = ireg[insts[nowpc].rt] + ireg[insts[nowpc].rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ireg[insts[nowpc].rd] = ram[addr/4];
+    }
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << insts[nowpc].line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x3e){//insts[nowpc].name== "c.le.s"
+    instStatistics[CLES] ++;
+    if(freg[insts[nowpc].rs] <= freg[insts[nowpc].rt])
+      fpcond = 1;
+    else
+      fpcond = 0;
+  }
+  else if(insts[nowpc].op == 0x39){//insts[nowpc].name == "swcl"
+    instStatistics[SWCL] ++;
+    int addr = ireg[insts[nowpc].rs] + insts[nowpc].im;
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      conv c1;
+      c1.f = freg[insts[nowpc].rt];
+      ram[addr/4] = c1.i;
+    }else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << insts[nowpc].line << endl;
+      showRegs();
+    }
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x7){//insts[nowpc].name == "fabs"
+    instStatistics[FABS] ++;
+    freg[insts[nowpc].rd] = fabs(freg[insts[nowpc].rs]);
+  }
+  else if(insts[nowpc].op == 0x00 && insts[nowpc].fu == 0x08){//insts[nowpc].name == "jr"
     instStatistics[JR] ++;
-    pc = ireg[nowi.rs] / 4;
+    pc = ireg[insts[nowpc].rs] / 4;
   }
-  else if(nowi.op == 0x18 && nowi.fu == 0x00){//nowi.name == "input"
+  else if(insts[nowpc].op == 0x03){	//insts[nowpc].name == "jal"
+    instStatistics[JAL] ++;
+    ireg[31] = pc * 4;
+    pc = insts[nowpc].im;
+  }  
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x32){//insts[nowpc].name== "c.eq.s"
+    instStatistics[CEQS] ++;
+    if(freg[insts[nowpc].rs] == freg[insts[nowpc].rt])
+      fpcond = 1;
+    else
+      fpcond = 0;
+  }
+  else if(insts[nowpc].op == 0x32){//insts[nowpc].name == "lfh"
+    instStatistics[LFH] ++;
+    conv c1;
+    c1.i = (insts[nowpc].im << 16);	// 下位はゼロ詰め
+    freg[insts[nowpc].rt] = c1.f;
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x4){//insts[nowpc].name == "fmove"
+    instStatistics[FMOVE] ++;
+    freg[insts[nowpc].rd] = freg[insts[nowpc].rs];
+  }
+  else if(insts[nowpc].op == 0x05){//insts[nowpc].name == "bne"
+    instStatistics[BNE] ++;
+    if(ireg[insts[nowpc].rt] != ireg[insts[nowpc].rs]) pc += insts[nowpc].im;
+  }
+  else if(insts[nowpc].op == 0x30){//insts[nowpc].name == "lfl"){	// 上位16bitは保存する
+    instStatistics[LFL] ++;
+    conv c1, c2;
+    c1.f = freg[insts[nowpc].rt];
+    c2.i = (c1.i & 0xffff0000) | (insts[nowpc].im & 0xffff);
+    freg[insts[nowpc].rt] = c2.f;
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x5){//insts[nowpc].name == "fneg"
+    instStatistics[FNEG] ++;
+    freg[insts[nowpc].rd] = - freg[insts[nowpc].rs];
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x6){
+    instStatistics[SQRT] ++;
+    freg[insts[nowpc].rd] = sqrt(freg[insts[nowpc].rs]);
+  }
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x2b){//insts[nowpc].name == "slti"
+    instStatistics[SLTI] ++;
+    if(ireg[insts[nowpc].rs] < insts[nowpc].im) ireg[insts[nowpc].rt] = 1;
+    else ireg[insts[nowpc].rt] = 0;
+  }
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x10 && insts[nowpc].fu == 0x3){//insts[nowpc].name == "div.s"
+    instStatistics[DIVS] ++;
+    freg[insts[nowpc].rd] = freg[insts[nowpc].rs] / freg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x2c){//insts[nowpc].name == "sgti"
+    instStatistics[SGEI] ++;
+    if(ireg[insts[nowpc].rs] > insts[nowpc].im) ireg[insts[nowpc].rt] = 1;
+    else ireg[insts[nowpc].rt] = 0;
+  }
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x2a){//insts[nowpc].name == "slt"
+    instStatistics[SLT] ++;
+    if(ireg[insts[nowpc].rs] < ireg[insts[nowpc].rt]) ireg[insts[nowpc].rd] = 1;
+    else ireg[insts[nowpc].rd] = 0;
+  }
+  else if(insts[nowpc].op == 0x21){//insts[nowpc].name == "lwclr"
+    instStatistics[LWCLR] ++;
+    int addr = ireg[insts[nowpc].rt] + ireg[insts[nowpc].rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      conv c1;
+      c1.i = ram[addr/4];
+      freg[insts[nowpc].rd] = c1.f;
+    }else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
+      cerr << ", addr: " << addr << endl;
+      cerr << insts[nowpc].line << endl;
+      showRegs();
+    }
+  }
+  else if(insts[nowpc].op == 0x0d){//insts[nowpc].name == "ori"
+    instStatistics[ORI] ++;
+    ireg[insts[nowpc].rt] = ireg[insts[nowpc].rs] | insts[nowpc].im;
+  }
+  else if(insts[nowpc].op == 0x0f){	//insts[nowpc].name == "lui"
+    instStatistics[LUI] ++;
+    ireg[insts[nowpc].rt] = (insts[nowpc].im * 0x10000) & 0xFFFF0000;
+  }
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x23){	//insts[nowpc].name == "subu"
+    instStatistics[SUBU] ++;
+    ireg[insts[nowpc].rd] = ireg[insts[nowpc].rs] - ireg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x2c){	//insts[nowpc].name == "swr"
+    instStatistics[SWR] ++;
+    int addr = ireg[insts[nowpc].rt] + ireg[insts[nowpc].rs];
+    if(0 <= addr && addr <= DATA_RAM_SIZE){
+      ram[addr/4] = ireg[insts[nowpc].rd];
+    }
+    else{
+      cerr << "ERROR: touching memory out of bounds, pc: " << pc << endl;
+      cerr << insts[nowpc].line << endl;
+      cerr << "inst_num: " << inst_num << endl;
+      cerr << ", addr: " << addr << endl;
+    }
+  }
+  else if(insts[nowpc].op == 0x18 && insts[nowpc].fu == 0x01){//insts[nowpc].name == "output"
+    instStatistics[OUTPUT] ++;
+    cout << (char)(ireg[insts[nowpc].rs] & 0x000000FF);
+  }
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x21){	//insts[nowpc].name == "addu"
+    instStatistics[ADDU] ++;
+    ireg[insts[nowpc].rd] = ireg[insts[nowpc].rs] + ireg[insts[nowpc].rt];
+  }
+  else if(insts[nowpc].op == 0x00 && insts[nowpc].fu == 0x03){	//insts[nowpc].name == "sra"
+    instStatistics[SRA] ++;
+    ireg[insts[nowpc].rd] = ireg[insts[nowpc].rs] >> insts[nowpc].sh;
+  }
+  else if(insts[nowpc].op == 0x18 && insts[nowpc].fu == 0x00){//insts[nowpc].name == "input"
     instStatistics[INPUT] ++;
     char c;
     if(inputFile != NULL)
       c = getc(inputFile);
     else
       c = getchar();
-    ireg[nowi.rs] = (int)c;
-  }
-  else if(nowi.op == 0x18 && nowi.fu == 0x01){//nowi.name == "output"
-    instStatistics[OUTPUT] ++;
-    cout << (char)(ireg[nowi.rs] & 0x000000FF);
+    ireg[insts[nowpc].rs] = (int)c;
   }
 
-  else if(nowi.op == 0x02){	//nowi.name == "j"
-    instStatistics[J] ++;
-    pc = nowi.im;
-  }
-  else if(nowi.op == 0x03){	//nowi.name == "jal"
-    instStatistics[JAL] ++;
-    ireg[31] = pc * 4;
-    pc = nowi.im;
-  }  
-
-  // float関係
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x0){//nowi.name == "add.s"
-    instStatistics[ADDS] ++;
-    freg[nowi.rd] = freg[nowi.rs] + freg[nowi.rt];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x1){//nowi.name == "sub.s"
-    instStatistics[SUBS] ++;
-    freg[nowi.rd] = freg[nowi.rs] - freg[nowi.rt];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x2){//nowi.name == "mul.s"
-    instStatistics[MULS] ++;
-    freg[nowi.rd] = freg[nowi.rs] * freg[nowi.rt];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3){//nowi.name == "div.s"
-    instStatistics[DIVS] ++;
-    freg[nowi.rd] = freg[nowi.rs] / freg[nowi.rt];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x4){//nowi.name == "fmove"
-    instStatistics[FMOVE] ++;
-    freg[nowi.rd] = freg[nowi.rs];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x5){//nowi.name == "fneg"
-    instStatistics[FNEG] ++;
-    freg[nowi.rd] = - freg[nowi.rs];
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x7){//nowi.name == "fabs"
-    instStatistics[FABS] ++;
-    freg[nowi.rd] = fabs(freg[nowi.rs]);
+  else if(insts[nowpc].op == 0x4 && insts[nowpc].rs == 0 && insts[nowpc].rt == 0 && insts[nowpc].im==-1){//insts[nowpc].name == "halt"
+    instStatistics[HALT] ++;
+    halt = true;
   }
 
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x32){//nowi.name== "c.eq.s"
-    instStatistics[CEQS] ++;
-    if(freg[nowi.rs] == freg[nowi.rt])
-      fpcond = 1;
-    else
-      fpcond = 0;
+  // 0 発行
+  else if(insts[nowpc].op == 0x0 && insts[nowpc].fu == 0x24){	//insts[nowpc].name == "and"
+    instStatistics[AND] ++;
+    ireg[insts[nowpc].rd] = ireg[insts[nowpc].rs] & ireg[insts[nowpc].rt];
   }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x3e){//nowi.name== "c.le.s"
-    instStatistics[CLES] ++;
-    if(freg[nowi.rs] <= freg[nowi.rt])
-      fpcond = 1;
-    else
-      fpcond = 0;
+  else if(insts[nowpc].op == 0x04){//insts[nowpc].name == "beq"
+    instStatistics[BEQ] ++;
+    if(ireg[insts[nowpc].rt] == ireg[insts[nowpc].rs]) pc += insts[nowpc].im;
   }
-
-  else if(nowi.op == 0x30){//nowi.name == "lfl"){	// 上位16bitは保存する
-    instStatistics[LFL] ++;
-    conv c1, c2;
-    c1.f = freg[nowi.rt];
-    c2.i = (c1.i & 0xffff0000) | (nowi.im & 0xffff);
-    freg[nowi.rt] = c2.f;
-  }
-  else if(nowi.op == 0x32){//nowi.name == "lfh"
-    instStatistics[LFH] ++;
-    conv c1;
-    c1.i = (nowi.im << 16);	// 下位はゼロ詰め
-    freg[nowi.rt] = c1.f;
-  }
-
-  else if(nowi.op == 0x31){//nowi.name == "lwcl"
-    instStatistics[LWCL] ++;
-    int addr = ireg[nowi.rs] + nowi.im;
-    if(0 <= addr && addr <= DATA_RAM_SIZE){
-      conv c1;
-      c1.i = ram[addr/4];
-      freg[nowi.rt] = c1.f;
-    }else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
-      cerr << ", addr: " << addr << endl;
-      cerr << nowi.line << endl;
-      showRegs();
-    }
-  }
-  else if(nowi.op == 0x39){//nowi.name == "swcl"
-    instStatistics[SWCL] ++;
-    int addr = ireg[nowi.rs] + nowi.im;
-    if(0 <= addr && addr <= DATA_RAM_SIZE){
-      conv c1;
-      c1.f = freg[nowi.rt];
-      ram[addr/4] = c1.i;
-    }else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
-      cerr << ", addr: " << addr << endl;
-      cerr << nowi.line << endl;
-      showRegs();
-    }
-  }
-  // 追加 //
-  else if(nowi.op == 0x21){//nowi.name == "lwclr"
-    instStatistics[LWCLR] ++;
-    int addr = ireg[nowi.rt] + ireg[nowi.rs];
-    if(0 <= addr && addr <= DATA_RAM_SIZE){
-      conv c1;
-      c1.i = ram[addr/4];
-      freg[nowi.rd] = c1.f;
-    }else{
-      cerr << "ERROR: touching memory out of bounds, pc: " << pc;
-      cerr << ", addr: " << addr << endl;
-      cerr << nowi.line << endl;
-      showRegs();
-    }
-  }
-  else if(nowi.op == 0x29){//nowi.name == "swclr"
+  else if(insts[nowpc].op == 0x29){//insts[nowpc].name == "swclr"
     instStatistics[SWCLR] ++;
-    int addr = ireg[nowi.rt] + ireg[nowi.rs];
+    int addr = ireg[insts[nowpc].rt] + ireg[insts[nowpc].rs];
     if(0 <= addr && addr <= DATA_RAM_SIZE){
       conv c1;
-      c1.f = freg[nowi.rd];
+      c1.f = freg[insts[nowpc].rd];
       ram[addr/4] = c1.i;
     }else{
       cerr << "ERROR: touching memory out of bounds, pc: " << pc;
       cerr << ", addr: " << addr << endl;
-      cerr << nowi.line << endl;
+      cerr << insts[nowpc].line << endl;
       showRegs();
     }
   }
-
-  else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x1){//nowi.name == "bclt"
+  else if(insts[nowpc].op == 0x11 && insts[nowpc].fmt == 0x8 && insts[nowpc].rt == 0x1){//insts[nowpc].name == "bclt"
     instStatistics[BCLT] ++;
     if(fpcond == 1)
-      pc += nowi.im;
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x8 && nowi.rt == 0x0){//nowi.name == "bclf"
-    instStatistics[BCLF] ++;
-    if(fpcond == 0)
-      pc += nowi.im;
-  }
-  else if(nowi.op == 0x11 && nowi.fmt == 0x10 && nowi.fu == 0x6){
-    instStatistics[SQRT] ++;
-    freg[nowi.rd] = sqrt(freg[nowi.rs]);
+      pc += insts[nowpc].im;
   }
 
   else{

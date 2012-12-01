@@ -4,6 +4,7 @@
 #include<string>
 #include<cstring>
 #include<cstdio>
+#include<ctime>
 #include<map>
 #include<vector>
 #include<set>
@@ -128,7 +129,7 @@ void showRegs(void);
 void showPcStat(void);
 void showInstStat(void);
 
-void execInst(inst);
+void execInst(void);
 
 int stepx(ULLI);
 
