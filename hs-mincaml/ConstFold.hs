@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module ConstFold where
 
 import qualified Type as T

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Virtual where
 
 import qualified Type as T

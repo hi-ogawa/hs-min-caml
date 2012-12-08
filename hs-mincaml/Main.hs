@@ -63,9 +63,9 @@ compile name iter limit =
 showTest :: Command -> FilePath -> Int -> Int -> IO ()       
 showTest com name iter limit =
   do contents <- readFile (name++".ml")
-     -- libml    <- readFile libmlPath
-     -- case test com iter limit (libml++contents) of
-     case test com iter limit contents of
+     libml    <- readFile libmlPath
+     case test com iter limit (libml++contents) of
+     -- case test com iter limit contents of
        Right st         -> putStr st
        Left  msg        -> putStr $ "ERROR: "++msg
       
@@ -108,15 +108,19 @@ test com iter limit contents =
               
       let (simmExp, fundefs2)          =  SI.simmMain (virExp, fundefs1)
       if com == 8 then return $ (show simmExp)++(show fundefs2) else do
+      -- if com == 8 then return $ show $ aGetFunc "bilinear" fundefs2 else do
+        
+        --- ここらへんで基本ブロック分割する Asm.T => Block.Block
         
       let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4
-      if com == 9 then return $ (show regExp)++(show fundefs3) else do          
+      if com == 9 then return $ (show regExp)++(show fundefs3) else do
+      -- if com == 9 then return $ show $ aGetFunc "bilinear" fundefs3 else do
         
       let output                      =  E.emitMain ((\(_,_,_,d)->d) gloTup) prog c5
       return $ output
       
 
--- optimize loop : (elimExExp) -> beta -> assoc -> inline -> constfold -> elim
+-- optimize loop : (elimExExp) => beta => assoc => inline => constfold => elim
 loopIter :: Int -> I.Counter -> Int -> K.T -> (K.T, I.Counter)
 loopIter n c limit exp = 
   let !_ = DT.trace ("iteration:"++(show n)) () in
@@ -130,21 +134,19 @@ loopIter n c limit exp =
 
 
 -- for debug
-cGetFunc :: String -> [C.Fundef] -> C.Fundef
+cGetFunc :: String -> [C.Fundef] -> C.Fundef        
 cGetFunc name (f:fs) = 
-  if isPrefixOf name x
+  if isPrefixOf (name++".") x
   then f
   else cGetFunc name fs
-  where C.Fundef{ C.name = (I.Label x,t)}
-          = f
+  where C.Fundef{ C.name = (I.Label x,t)} = f
 
 aGetFunc :: String -> [A.Fundef] -> A.Fundef
 aGetFunc name (f:fs) = 
-  if isPrefixOf name x
+  if isPrefixOf (name++".") x
   then f
   else aGetFunc name fs
-  where A.Fundef{ A.name = I.Label x}
-          = f
+  where A.Fundef{ A.name = I.Label x} = f
       
 
 -------interpreter---------------

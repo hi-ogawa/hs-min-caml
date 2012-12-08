@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module IdMod where
 
 import qualified Type as T

@@ -31,7 +31,7 @@ gE sEnvI sEnvF e = case e of
     then A.Let (x, t) (A.Set i) e''
     else let !_ = DT.trace ("simm-ELIM: "++(show x)) () in e''
     where e'' = gE (Mp.insert x i sEnvI) sEnvF e' 
-  A.Let (x, t) (A.SetF f) e' | (f == (-1.0) || f == 0.0 || f == 1.0) && (not $ A.isReg x)->
+  A.Let (x, t) (A.SetF f) e' | (f == (-1.0) || f == 0.0 || f == 1.0 || f == 2.0 || f == (-0.2) || f == (-0.1)) && (not $ A.isReg x)->
     if elem x (A.freeVar e'')
     then A.Let (x, t) (A.SetF f) e''
     else let !_ = DT.trace ("simm-ELIM: "++(show x)) () in e''
@@ -128,10 +128,16 @@ gExp sEnvI sEnvF exp = case exp of
          Just (-1.0)    -> True
          Just (0.0)     -> True
          Just (1.0)     -> True
+         Just (0.01)    -> True
+         Just (-0.2)    -> True
+         Just (-0.1)    -> True
          _              -> False
        findFReg x = case Mp.lookup x sEnvF of
          Just (-1.0)    -> A.regMiOneF
          Just (0.0)     -> A.regZrF
          Just (1.0)     -> A.regOneF
+         Just (0.01)    -> A.regIKUTA1
+         Just (-0.2)    -> A.regIKUTA2
+         Just (-0.1)    -> A.regIKUTA3
          _              -> error ""
          

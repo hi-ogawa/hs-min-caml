@@ -4,7 +4,7 @@ RegAlloc.hs Simm.hs Syntax.hs Type.hs Typing.hs Virtual.hs ElimEqExp.hs \
 GlobalEnv.hs ElimJump.hs
 
 Main: ${SOURCES} Lexer.hs Parser.hs
-	ghc -O2 -XTupleSections -XBangPatterns --make Main.hs
+	ghc -O2 -XTupleSections -XBangPatterns -cpp --make Main.hs
 
 Lexer.hs: Lexer.x
 	alex Lexer.x -o Lexer__.hs

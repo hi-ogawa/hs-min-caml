@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module RegAlloc where
 
 import qualified Type as T

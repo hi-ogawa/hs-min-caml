@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module GlobalEnv where
 
 import qualified Type as T

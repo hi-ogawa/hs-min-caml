@@ -4,6 +4,12 @@
 	lfl	$f31, 0
 	lfh	$f29, 49024
 	lfl	$f29, 0
+	lfh	$f26, 15395
+	lfl	$f26, 55050
+	lfh	$f27, 48716
+	lfl	$f27, 52429
+	lfh	$f28, 48588
+	lfl	$f28, 52429
 	j	min_caml_start
 atan_sub.2405:
 	lfh	$f3, 16128
@@ -46,9 +52,9 @@ atan_sub.2405:
 	add.s	$f3, $f3, $f31
 	add.s	$f0, $f3, $f0
 	div.s	$f0, $f4, $f0
-	fmove	$f26, $f0
+	fmove	$f20, $f0
 	fmove	$f0, $f2
-	fmove	$f2, $f26
+	fmove	$f2, $f20
 	j	atan_sub.2405
 bclf.88428:
 	jr	$r31
@@ -12165,9 +12171,7 @@ cont.89985:
 	addi	$r5, $r0, 0
 	j	cont.90025
 bnei.90026:
-	lfh	$f1, 48716
-	lfl	$f1, 52429
-	c.le.s	$f1, $f0
+	c.le.s	$f27, $f0
 	bclf	bclf.90028
 	addi	$r5, $r0, 0
 	j	cont.90027
@@ -12176,8 +12180,7 @@ bclf.90028:
 cont.90027:
 cont.90025:
 	bnei	$r5, 1, bnei.90030
-	lfh	$f1, 15395
-	lfl	$f1, 55050
+	fmove	$f1, $f26
 	add.s	$f0, $f0, $f1
 	lwcl	$f1, 344($r0)
 	mul.s	$f1, $f1, $f0
@@ -12636,10 +12639,10 @@ cont.90093:
 bnei.90120:
 	addi	$r4, $r0, 3
 	addi	$r2, $r4, 0
-	fmove	$f26, $f0
+	fmove	$f20, $f0
 	fmove	$f0, $f1
 	fmove	$f1, $f2
-	fmove	$f2, $f26
+	fmove	$f2, $f20
 	sw	$r31, -12($r29)	!call-dir
 	addi	$r29, $r29, -12	!call-dir
 	jal	check_all_inside.4838
@@ -13127,10 +13130,8 @@ cont.90161:
 	addi	$r2, $r0, 0
 	j	cont.90201
 bnei.90202:
-	lfh	$f0, 48588
-	lfl	$f0, 52429
-	lwcl	$f1, 576($r0)
-	c.le.s	$f0, $f1
+	lwcl	$f0, 576($r0)
+	c.le.s	$f28, $f0
 	bclf	bclf.90204
 	addi	$r2, $r0, 0
 	j	cont.90203
@@ -13728,10 +13729,8 @@ cont.90271:
 	addi	$r2, $r0, 0
 	j	cont.90311
 bnei.90312:
-	lfh	$f0, 48588
-	lfl	$f0, 52429
-	lwcl	$f1, 576($r0)
-	c.le.s	$f0, $f1
+	lwcl	$f0, 576($r0)
+	c.le.s	$f28, $f0
 	bclf	bclf.90314
 	addi	$r2, $r0, 0
 	j	cont.90313
@@ -14297,10 +14296,8 @@ cont.90373:
 	addi	$r2, $r0, 0
 	j	cont.90413
 bnei.90414:
-	lfh	$f0, 48588
-	lfl	$f0, 52429
-	lwcl	$f1, 576($r0)
-	c.le.s	$f0, $f1
+	lwcl	$f0, 576($r0)
+	c.le.s	$f28, $f0
 	bclf	bclf.90416
 	addi	$r2, $r0, 0
 	j	cont.90415
@@ -14993,8 +14990,7 @@ bclf.90534:
 	bclf	bclf.90536
 	j	cont.90535
 bclf.90536:
-	lfh	$f1, 15395
-	lfl	$f1, 55050
+	fmove	$f1, $f26
 	add.s	$f0, $f0, $f1
 	lwcl	$f1, 0($r4)
 	mul.s	$f1, $f1, $f0
@@ -17160,8 +17156,7 @@ bclf.90868:
 	bclf	bclf.90870
 	j	cont.90869
 bclf.90870:
-	lfh	$f1, 15395
-	lfl	$f1, 55050
+	fmove	$f1, $f26
 	add.s	$f0, $f0, $f1
 	lwcl	$f1, 0($r5)
 	mul.s	$f1, $f1, $f0
@@ -19282,9 +19277,7 @@ trace_reflections.5395:
 	addi	$r29, $r29, 28
 	lw	$r31, -28($r29)	!call-dir
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91186
 	addi	$r2, $r0, 0
 	j	cont.91185
@@ -19575,10 +19568,8 @@ cont.91197:
 	addi	$r2, $r0, 0
 	j	cont.91237
 bnei.91238:
-	lfh	$f0, 48588
-	lfl	$f0, 52429
-	lwcl	$f1, 576($r0)
-	c.le.s	$f0, $f1
+	lwcl	$f0, 576($r0)
+	c.le.s	$f28, $f0
 	bclf	bclf.91240
 	addi	$r2, $r0, 0
 	j	cont.91239
@@ -20360,9 +20351,7 @@ cont.91305:
 	lw	$r31, -60($r29)	!call-dir
 cont.91303:
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91364
 	addi	$r2, $r0, 0
 	j	cont.91363
@@ -20507,9 +20496,7 @@ trace_ray.5428:
 	addi	$r29, $r29, 28
 	lw	$r31, -28($r29)	!call-dir
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91380
 	addi	$r2, $r0, 0
 	j	cont.91379
@@ -21061,10 +21048,8 @@ cont.91405:
 	addi	$r2, $r0, 0
 	j	cont.91445
 bnei.91446:
-	lfh	$f2, 48588
-	lfl	$f2, 52429
-	lwcl	$f3, 576($r0)
-	c.le.s	$f2, $f3
+	lwcl	$f2, 576($r0)
+	c.le.s	$f28, $f2
 	bclf	bclf.91448
 	addi	$r2, $r0, 0
 	j	cont.91447
@@ -21849,9 +21834,7 @@ cont.91513:
 	lw	$r31, -84($r29)	!call-dir
 cont.91511:
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91572
 	addi	$r2, $r0, 0
 	j	cont.91571
@@ -22071,9 +22054,7 @@ trace_diffuse_ray.5541:
 	addi	$r29, $r29, 12
 	lw	$r31, -12($r29)	!call-dir
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91596
 	addi	$r2, $r0, 0
 	j	cont.91595
@@ -22508,10 +22489,8 @@ cont.91619:
 	addi	$r2, $r0, 0
 	j	cont.91659
 bnei.91660:
-	lfh	$f0, 48588
-	lfl	$f0, 52429
-	lwcl	$f1, 576($r0)
-	c.le.s	$f0, $f1
+	lwcl	$f0, 576($r0)
+	c.le.s	$f28, $f0
 	bclf	bclf.91662
 	addi	$r2, $r0, 0
 	j	cont.91661
@@ -23275,9 +23254,7 @@ cont.91727:
 	lw	$r31, -36($r29)	!call-dir
 cont.91725:
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91786
 	addi	$r2, $r0, 0
 	j	cont.91785
@@ -23893,9 +23870,7 @@ cont.91811:
 	lw	$r31, -56($r29)	!call-dir
 cont.91809:
 	lwcl	$f0, 584($r0)
-	lfh	$f1, 48588
-	lfl	$f1, 52429
-	c.le.s	$f0, $f1
+	c.le.s	$f0, $f28
 	bclf	bclf.91870
 	addi	$r2, $r0, 0
 	j	cont.91869
@@ -27059,10 +27034,10 @@ bgt.92154:
 	addi	$r3, $r2, -1
 	lw	$r2, -8($r29)
 	lw	$r4, -4($r29)
-	fmove	$f26, $f0
+	fmove	$f20, $f0
 	fmove	$f0, $f1
 	fmove	$f1, $f2
-	fmove	$f2, $f26
+	fmove	$f2, $f20
 	sw	$r31, -28($r29)	!call-dir
 	addi	$r29, $r29, -28	!call-dir
 	jal	pretrace_pixels.5794

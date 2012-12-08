@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Emit where
 
 import qualified Type as T
@@ -41,6 +40,14 @@ emitMain' gloOffset (e, fundefs) =
      tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regOneF         (0::Int)
      tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regMiOneF       (49024::Int)
      tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regMiOneF       (0::Int)
+     
+     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA1          (15395::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA1          (55050::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA2          (48716::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA2          (52429::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA3          (48588::Int)
+     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA3          (52429::Int)
+     
      tell $ printf "\t%s\t%s\n"                         "j" "min_caml_start"
      mapM emitFun fundefs
      tell $ printf "%s:\n"                              "min_caml_start"
@@ -82,6 +89,12 @@ writeExp (NonTail a) exp = case exp of
                           -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regOneF
   A.SetF f              | f == -1.0  
                           -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regMiOneF
+  A.SetF f              | f == 0.01
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA1
+  A.SetF f              | f == -0.2
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA2
+  A.SetF f              | f == -0.1  
+                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA3
   A.SetF f                -> do tell $ printf "\t%s\t%s, %d\n"          "lfh"  a hi
                                 case lo of
                                   0     -> return ()

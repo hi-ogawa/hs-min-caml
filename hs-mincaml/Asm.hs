@@ -61,7 +61,10 @@ regSp = "$r29"
 regHp = "$r30"
 regRa = "$r31"
 
-regSwF= "$f26"
+regSwF= "$f20"
+regIKUTA1= "$f26" -- 0.01
+regIKUTA2= "$f27" -- -0.2
+regIKUTA3= "$f28" -- -0.1
 regMiOneF= "$f29"
 regZrF= "$f30"
 regOneF= "$f31"

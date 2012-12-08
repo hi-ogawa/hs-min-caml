@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module KNormal where
 
 import qualified Type as T
