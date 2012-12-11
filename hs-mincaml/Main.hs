@@ -16,6 +16,7 @@ import qualified Assoc as AS
 import qualified Inline as IN
 import qualified ConstFold as CO
 import qualified Elim as EL
+import qualified IfExpand as IE
 import qualified GlobalEnv as G
 import qualified Closure as C
 import qualified Asm as A
@@ -130,7 +131,7 @@ loopIter n c limit exp =
   -- else let lastExp = EL.elimMain $ B.betaMain $ EE.elimEqExpMain exp 
   --      in (lastExp, c)
   where (exp', c') = IN.inlineMain (AS.assocMain $ B.betaMain exp) limit c 
-        exp''      = EL.elimMain $ CO.constMain exp'
+        exp''      = IE.ifExpandMain $ EL.elimMain $ CO.constMain exp'
 
 
 -- for debug

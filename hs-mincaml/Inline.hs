@@ -3,6 +3,7 @@ module Inline where
 import qualified IdMod as I
 import qualified KNormal as K
 import qualified Alpha as Al
+
 import qualified Data.Map as Mp
 import Control.Monad.State
 import qualified Debug.Trace as DT

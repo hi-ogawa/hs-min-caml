@@ -1,7 +1,7 @@
 SOURCES=Alpha.hs ArgHandle.hs Asm.hs Assoc.hs Beta.hs Closure.hs \
 ConstFold.hs Elim.hs Emit.hs IdMod.hs Inline.hs KNormal.hs Main.hs \
 RegAlloc.hs Simm.hs Syntax.hs Type.hs Typing.hs Virtual.hs ElimEqExp.hs \
-GlobalEnv.hs ElimJump.hs
+GlobalEnv.hs ElimJump.hs IfExpand.hs
 
 Main: ${SOURCES} Lexer.hs Parser.hs
 	ghc -O2 -XTupleSections -XBangPatterns -cpp --make Main.hs

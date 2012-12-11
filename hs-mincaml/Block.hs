@@ -11,21 +11,19 @@ import Control.Monad.State
 type MyMonadSS = StateT [(I.Id, Block)] I.IdState
 
 data Fundef = Fundef{fId:: I.Label, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T,
-                     fBlocks :: Mp.Map I.Id Block, fHead :: I.Id,
+                     fBlocks :: Mp.Map I.Id Block, fHead :: I.Id, fTails :: [I.Id],
                      fDefRegs:: [I.Id], fcalls :: [I.Label]}
 -- <<関数>>
 -- 関数のラベル, 整数引数のID, 浮動小数引数のID, 返り値の型
--- 関数内のBlock群, 関数で始めに呼ばれるBlock
+-- 関数内のBlock群, 関数で始めに呼ばれるBlock, 関数の末尾のBlock群
 -- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群
 
-data Block  = Block{bId :: I.Id, {- bFundef:: I.Label, -} bStmts :: [Stmt], -- St.Set I.Id
+data Block  = Block{bId :: I.Id, {- bFundef:: I.Label, -} bStmts :: [Stmt],
                     bPred :: [I.Id], bSucc :: [I.Id],
---                    bHead :: I.Id,   bTail :: I.Id,
                     bLiveIn :: [I.Id], bLiveOut :: [I.Id]}
 -- <<基本ブロック>>
 -- BlockのID, このBlockを使用する関数ラベル, このBlock内で発行するStmt群
 -- このBlockに入るBlock群, このBlockから続くBlock群 (高々2つ??)
--- 最初のStmt, 最後のStmt
 -- このBlockの実行直前の生存変数群、このBlockの実行直後の生存変数群
 
 data Stmt   = Stmt {{-sId :: I.Id, -}{-sBlock :: I.Id,-} sInst :: Exp,
@@ -75,7 +73,7 @@ blockMain (main, fundefs) c =
   where main' = As.Fundef{As.name = I.Label "min_caml_main", As.args = [], As.fargs = [],
                           As.body = main,           As.ret  = T.Unit}
         (fundefs', c') = runState (evalStateT (mapM blockFun (main' : fundefs)) []) c
-                
+
 -- Asm関数 を Block関数に変換
 blockFun :: As.Fundef -> MyMonadSS Fundef
 blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
@@ -86,13 +84,19 @@ blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
      insertBlock first ss [] succs
      bs <- get        -- 関数内のblockを集める     
      return $ Fundef{fId = la, fArgs = is, fFargs = fs, fRet = retT,
-                     fBlocks = Mp.fromList bs, fHead = first}
+                     fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first}
   where dest = (case retT of
                    T.Unit       -> ("$g0", T.Int)
                    T.Float      -> (As.fRegs !! 0, T.Float)
                    _            -> (As.iRegs !! 0, T.Int))
+               
+getTails :: Mp.Map I.Id Block -> I.Id -> [I.Id]
+getTails bmap now = if null succs
+                    then [now]
+                    else concatMap (getTails bmap) succs
+  where succs = bSucc (bmap Mp.! now)
 
--- Let列 を Blockの集合へ (Block自体はWriterで書く。eにおける先頭ブロックの後続のブロック郡のIDを返す)
+-- Let列 を Blockの集合へ (Block自体はStateで積み上げる。eにおける先頭ブロックの後続のブロック郡のIDを返す)
 asmToBlocks :: (I.Id, T.T) -> [I.Id] -> As.T -> MyMonadSS ([Stmt], [I.Id])
 asmToBlocks dest now e = case e of
   As.Ans exp            -> expToStmt dest now exp >>= (\(s, _, succs) -> return ([s], succs))
