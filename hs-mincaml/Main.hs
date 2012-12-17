@@ -26,9 +26,10 @@ import qualified RegAlloc as R
 import qualified Emit as E
 import qualified ElimJump as EJ
 import qualified ArgHandle as Arg
+import qualified Block as BL
+import qualified Liveness as LI
 
-{- Prelude> :set -package data-binary-ieee754 -}
-{- Prelude> :set -XBangPatterns -}
+
 import System.Environment as Sys
 import qualified Data.Map as Mp
 import Control.Exception
@@ -65,8 +66,8 @@ showTest :: Command -> FilePath -> Int -> Int -> IO ()
 showTest com name iter limit =
   do contents <- readFile (name++".ml")
      libml    <- readFile libmlPath
-     case test com iter limit (libml++contents) of
-     -- case test com iter limit contents of
+     -- case test com iter limit (libml++contents) of
+     case test com iter limit contents of
        Right st         -> putStr st
        Left  msg        -> putStr $ "ERROR: "++msg
       
@@ -111,7 +112,14 @@ test com iter limit contents =
       if com == 8 then return $ (show simmExp)++(show fundefs2) else do
       -- if com == 8 then return $ show $ aGetFunc "bilinear" fundefs2 else do
         
-        --- ここらへんで基本ブロック分割する Asm.T => Block.Block
+      -- block分割 --
+      let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
+      if com == 11 then return $ (show fundefsB) else do
+      -- 生存解析 --
+      let fundefsL          =  LI.liveMain fundefsB
+      if com == 12 then return $ (show fundefsL) else do
+      -- レジスタ彩色笑 --
+        
         
       let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4
       if com == 9 then return $ (show regExp)++(show fundefs3) else do

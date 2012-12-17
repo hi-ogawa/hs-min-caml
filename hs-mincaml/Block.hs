@@ -12,14 +12,15 @@ type MyMonadSS = StateT [(I.Id, Block)] I.IdState
 
 data Fundef = Fundef{fId:: I.Label, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T,
                      fBlocks :: Mp.Map I.Id Block, fHead :: I.Id, fTails :: [I.Id],
-                     fDefRegs:: [I.Id], fcalls :: [I.Label]}
+                     fDefRegs:: [I.Id], fCalls :: [I.Label], fRegMap :: Mp.Map I.Id Int}
+
 -- <<関数>>
 -- 関数のラベル, 整数引数のID, 浮動小数引数のID, 返り値の型
 -- 関数内のBlock群, 関数で始めに呼ばれるBlock, 関数の末尾のBlock群
--- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群
+-- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群, (仮のレジスタ変数を作り、変数からその数値へのMap)
 
 data Block  = Block{bId :: I.Id, {- bFundef:: I.Label, -} bStmts :: [Stmt],
-                    bPred :: [I.Id], bSucc :: [I.Id],
+                    bPreds :: [I.Id], bSuccs :: [I.Id],
                     bLiveIn :: [I.Id], bLiveOut :: [I.Id]}
 -- <<基本ブロック>>
 -- BlockのID, このBlockを使用する関数ラベル, このBlock内で発行するStmt群
@@ -84,7 +85,8 @@ blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
      insertBlock first ss [] succs
      bs <- get        -- 関数内のblockを集める     
      return $ Fundef{fId = la, fArgs = is, fFargs = fs, fRet = retT,
-                     fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first}
+                     fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first,
+                     fDefRegs = [], fCalls = [], fRegMap = Mp.empty}
   where dest = (case retT of
                    T.Unit       -> ("$g0", T.Int)
                    T.Float      -> (As.fRegs !! 0, T.Float)
@@ -94,7 +96,7 @@ getTails :: Mp.Map I.Id Block -> I.Id -> [I.Id]
 getTails bmap now = if null succs
                     then [now]
                     else concatMap (getTails bmap) succs
-  where succs = bSucc (bmap Mp.! now)
+  where succs = bSuccs (bmap Mp.! now)
 
 -- Let列 を Blockの集合へ (Block自体はStateで積み上げる。eにおける先頭ブロックの後続のブロック郡のIDを返す)
 asmToBlocks :: (I.Id, T.T) -> [I.Id] -> As.T -> MyMonadSS ([Stmt], [I.Id])
@@ -161,8 +163,73 @@ expToStmt dest now exp = case exp of
   
 -- live関係は後で追加
 insertBlock :: I.Id -> [Stmt] -> [I.Id] -> [I.Id] -> MyMonadSS ()
-insertBlock b1 ss preds succs = modify ((b1, Block{bId = b1, bStmts = ss, bPred = preds, bSucc = succs}):)
+insertBlock b1 ss preds succs = modify ((b1, Block{bId = b1, bStmts = ss, bPreds = preds, bSuccs = succs
+                                                  ,bLiveIn = [], bLiveOut = []}):)
 
 -- live関係は後で追加
 stmten :: Exp -> Stmt
-stmten exp = Stmt{sInst = exp}
+stmten exp = Stmt{sInst = exp, sLiveIn = [], sLiveOut = []}
+
+
+-------------------
+-- show instance --
+-------------------
+instance Show Fundef where
+  show Fundef{fId = I.Label fname, fArgs = is, fFargs = fs, fRet = retT,
+              fBlocks = bmap, fHead = headBlock, fTails = lastBlocks,
+              fDefRegs = regs, fCalls = calls, fRegMap = regMap}
+    = "[FUNC_NAME]:"++ fname ++" (I_args):"++show is++" (F_args):"++show fs++" (RET_TYPE):"++show retT
+      ++"\n<HEAD>"++ headBlock ++ " <TAILS>"++ show lastBlocks
+      ++"\n<Use_Regs>"++show regs ++" <CALLS>"++ show calls ++ " <RegMap>"++ show (Mp.assocs regMap)
+      ++"\n"++ (concatMap show bs)
+   where bs = map snd $ Mp.assocs bmap
+        
+instance Show Block where
+  show Block{bId = bname, bStmts = ss,
+             bPreds = preds, bSuccs = succs,
+             bLiveIn = ins, bLiveOut = outs}
+    = "   -- BLOCK_ID : "++ bname ++ " --"
+      ++"\n   <PREDS>"++ show preds++" <SUCCS>"++ show succs
+      ++"\n   <BIN>"++ show ins++" <BOUT>"++ show outs
+      ++"\n"++ (concatMap (\s -> "      "++show s) ss)
+  
+instance Show Stmt where
+  show Stmt{sInst = exp, sLiveIn = ins, sLiveOut = outs} 
+   = show exp 
+     ++" <IN>: "++ show ins ++" <OUT>: "++ show outs
+     ++"\n"
+  
+instance Show Exp where  
+  show exp =
+    case exp of
+     Nop                                -> "Nop"
+     Set       (x,t) i                  -> "Set: (" ++ x ++") "++ show i
+     SetF      (x,t) f                  -> "SetF: ("++ x ++") "++ show f
+     SetL      (x,t) (I.Label l)        -> "SetL: ("++ x ++") "++ l        -- NOT ISSUED
+     Mov       (x,t) y                  -> "Mov: (" ++ x ++") "++ y
+     Neg       (x,t) y                  -> "Neg: (" ++ x ++") "++ y
+     Add       (x,t) y idOrIm           -> "Add: (" ++ x ++") "++ y ++" "++ show idOrIm
+     Sub       (x,t) y idOrIm           -> "Sub: (" ++ x ++") "++ y ++" "++ show idOrIm
+     SLL       (x,t) y i                -> "SLL: (" ++ x ++") "++ y ++" "++ show i
+     SRA       (x,t) y i                -> "SRA: (" ++ x ++") "++ y ++" "++ show i
+     Ld        (x,t) y idOrIm           -> "Ld: (" ++ x ++") "++ y ++" "++ show idOrIm
+     St        x y idOrIm               -> "St: " ++ x ++" "++ y ++" "++ show idOrIm
+     FMov      (x,t) y                  -> "FMov: (" ++ x ++") "++ y 
+     FNeg      (x,t) y                  -> "FNeg: (" ++ x ++") "++ y
+     Fabs      (x,t) y                  -> "Fabs: (" ++ x ++") "++ y
+     Sqrt      (x,t) y                  -> "Sqrt: (" ++ x ++") "++ y
+     FAdd      (x,t) y z                -> "FAdd: (" ++ x ++") "++ y ++" "++ z
+     FSub      (x,t) y z                -> "FSub: (" ++ x ++") "++ y ++" "++ z
+     FMul      (x,t) y z                -> "FMul: (" ++ x ++") "++ y ++" "++ z
+     FDiv      (x,t) y z                -> "FDiv: (" ++ x ++") "++ y ++" "++ z
+     LdF       (x,t) y idOrIm           -> "LdF: (" ++ x ++") "++ y ++" "++ show idOrIm
+     StF       x y idOrIm               -> "StF: " ++ x ++" "++ y ++" "++ show idOrIm
+     IfEq      x idOrIm b1 b2           -> "IfEq: "++ x ++" "++ show idOrIm ++" "++b1++" "++b2
+     IfLe      x idOrIm b1 b2           -> "IfLe: "++ x ++" "++ show idOrIm ++" "++b1++" "++b2
+     IfGe      x idOrIm b1 b2           -> "IfGe: "++ x ++" "++ show idOrIm ++" "++b1++" "++b2
+     IfFEq     x y b1 b2                -> "IfFEq: "++ x ++" "++ y ++" "++b1++" "++b2
+     IfFLe     x y b1 b2                -> "IfFLe: "++ x ++" "++ y ++" "++b1++" "++b2
+     CallCls   (x,t) f    is fs         -> "CallCls: ("++ x ++") "++ f ++", (args) "++show is++" "++show fs
+     CallDir   (x,t) (I.Label f) is fs  -> "CallDir: ("++ x ++") "++ f ++", (args) "++show is++" "++show fs
+     Save      x var                    -> "Save: "++ x ++" "++ var
+     Restore   (x, t) var               -> "Restore: "++ x ++" "++ var

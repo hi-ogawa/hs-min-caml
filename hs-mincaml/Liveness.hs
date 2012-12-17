@@ -12,6 +12,9 @@ import Control.Monad.State
 
 type LiveMonad = State (Mp.Map I.Id (Block, Bool))
 
+liveMain :: [Fundef] -> [Fundef]
+liveMain fundefs = map liveAnalysisF fundefs
+
 liveAnalysisF :: Fundef -> Fundef
 liveAnalysisF f@Fundef{{-fId = f, fArgs = is, fFargs = fs, fRet = retT,-}
                        fBlocks = bmap, {-fHead = first,-} fTails = tails
@@ -24,7 +27,7 @@ liveAnalysisF f@Fundef{{-fId = f, fArgs = is, fFargs = fs, fRet = retT,-}
 liveAnalysisB :: I.Id -> LiveMonad ()
 liveAnalysisB bid =
   do blo@Block{{- bId -} bStmts = ss, 
-               bPred = preds, bSucc = succs
+               bPreds = preds, bSuccs = succs
               {-bLiveIn = _, bLiveOut = _-}} <- getBlock bid
      lives <- concat `fmap` mapM (\i -> bLiveOut `fmap` getBlock i
                                  ) succs -- このblock直後の生存変数を得る
@@ -40,7 +43,7 @@ liveAnalysisB bid =
 
 checkWait :: I.Id -> LiveMonad Bool
 checkWait bid = 
-  do Block{bSucc = succs} <- getBlock bid
+  do Block{bSuccs = succs} <- getBlock bid
      and `fmap` mapM getCheck succs
                       
 liveAnalysisSS :: [Stmt] -> [I.Id] -> ([Stmt], [I.Id])
