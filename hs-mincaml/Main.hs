@@ -28,6 +28,7 @@ import qualified ElimJump as EJ
 import qualified ArgHandle as Arg
 import qualified Block as BL
 import qualified Liveness as LI
+import qualified RegColoring as RC
 
 
 import System.Environment as Sys
@@ -118,7 +119,9 @@ test com iter limit contents =
       -- 生存解析 --
       let fundefsL          =  LI.liveMain fundefsB
       if com == 12 then return $ (show fundefsL) else do
-      -- レジスタ彩色笑 --
+      -- レジスタ彩色的な何か --
+      let fundefsR          =  RC.regColorMain fundefsL
+      if com == 13 then return $ (show fundefsR) else do
         
         
       let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4

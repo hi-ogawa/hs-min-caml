@@ -207,7 +207,7 @@ alloc dest cont regEnv x t =
                                   else (case Mp.lookup y regEnv of
                                            Just yr -> St.insert yr live
                                            Nothing -> live)
-                                  ) St.empty free
+                                ) St.empty free
         allocables      = filter (\r -> St.notMember r live) (prefer ++ all)
         spilables       = filter (\y -> 
                                    not (A.isReg y) 

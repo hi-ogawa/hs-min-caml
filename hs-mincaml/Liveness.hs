@@ -26,13 +26,15 @@ liveAnalysisF f@Fundef{{-fId = f, fArgs = is, fFargs = fs, fRet = retT,-}
 
 liveAnalysisB :: I.Id -> LiveMonad ()
 liveAnalysisB bid =
-  do blo@Block{{- bId -} bStmts = ss, 
+  do blo@Block{{- bId -} bStmts = ss,
                bPreds = preds, bSuccs = succs
-              {-bLiveIn = _, bLiveOut = _-}} <- getBlock bid
-     lives <- concat `fmap` mapM (\i -> bLiveOut `fmap` getBlock i
-                                 ) succs -- このblock直後の生存変数を得る
-     let (ss', lives') = liveAnalysisSS ss lives
-     putBloChe bid (blo {bLiveIn = lives', bLiveOut = lives}) True
+               {-bLiveInI_F , bLiveOutI_F -}} <- getBlock bid
+     livesI <- (nub.concat) `fmap` mapM (\i -> bLiveInI `fmap` getBlock i
+                                        ) succs -- このblock直後の生存変数を得る
+     livesF <- (nub.concat) `fmap` mapM (\i -> bLiveInF `fmap` getBlock i
+                                        ) succs -- このblock直後の生存変数を得る
+     let (ss', (livesI', livesF')) = liveAnalysisSS ss (livesI, livesF)
+     putBloChe bid (blo {bStmts = ss', bLiveInI = livesI', bLiveOutI = livesI, bLiveInF = livesF', bLiveOutF = livesF}) True
      case length preds of
        0        -> return ()
        1        -> do check <- checkWait (head preds)
@@ -46,53 +48,57 @@ checkWait bid =
   do Block{bSuccs = succs} <- getBlock bid
      and `fmap` mapM getCheck succs
                       
-liveAnalysisSS :: [Stmt] -> [I.Id] -> ([Stmt], [I.Id])
-liveAnalysisSS ss lives = 
-  foldl (\(ss', ls) s -> 
-          let (s', ls') = liveAnalysisS s ls in (s':ss', ls')
-        ) ([], lives) (reverse ss)
+liveAnalysisSS :: [Stmt] -> ([I.Id], [I.Id]) -> ([Stmt], ([I.Id], [I.Id]))
+liveAnalysisSS ss livesI_F = 
+  foldl (\(ss', lsI_F) s -> 
+          let (s', lsI_F') = liveAnalysisS s lsI_F in (s':ss', lsI_F')
+        ) ([], livesI_F) (reverse ss)
 
 -- liveoutを渡してliveinを得る --
-liveAnalysisS :: Stmt -> [I.Id] -> (Stmt, [I.Id])
-liveAnalysisS s@Stmt{sInst = exp {- sLiveIn = _, sLiveOut = _-}} lives =
-  (s', lives')
-  where (defs, uses) = getDefsUses exp
-        lives'       = nub ((lives \\ defs) ++ uses)
-        s'           = s {sLiveIn = lives', sLiveOut = lives}
+liveAnalysisS :: Stmt -> ([I.Id], [I.Id]) -> (Stmt, ([I.Id], [I.Id]))
+liveAnalysisS s@Stmt{sInst = exp {- sLiveIn = _, sLiveOut = _-}} (livesI, livesF) =
+  (s', (livesI', livesF'))
+  where (defsI, usesI, defsF, usesF) = getDefsUses exp
+        livesI'                      = nub ((livesI \\ defsI) ++ usesI)
+        livesF'                      = nub ((livesF \\ defsF) ++ usesF)
+        s'                           = s {sLiveInI = livesI', sLiveOutI = livesI,
+                                          sLiveInF = livesF', sLiveOutF = livesF}
       
 -- defs,usesを集める --
-getDefsUses :: Exp -> ([I.Id], [I.Id])
+getDefsUses :: Exp -> ([I.Id], [I.Id], [I.Id], [I.Id])
 getDefsUses exp =
   case exp of
-    Nop              -> ([], [])
-    Set  (a,t) i     -> ([a],[])
-    SetF (a,t) f     -> ([a],[])
+    Nop              -> ([], [], [], [])
+    Set  (a,t) i     -> ([a],[], [],[])
+    SetF (a,t) f     -> ([],[], [a],[])
     SetL (a,t) l     -> error (show __FILE__ ++ show __LINE__)
-    Mov (a,t) x      -> ([a],[x])
-    Neg (a,t) x      -> ([a],[x])
-    Add (a,t) x y'   -> ([a],x:(ii y'))
-    Sub (a,t) x y'   -> ([a],x:(ii y'))
-    SLL (a,t) x i    -> ([a],[x])
-    SRA (a,t) x i    -> ([a],[x])
-    Ld  (a,t) x y'   -> ([a],x:(ii y'))
-    St  x y z'       -> ([], x:y:(ii z'))
-    FMov (a,t) x     -> ([a],[x])
-    FNeg (a,t) x     -> ([a],[x])
-    Fabs (a,t) x     -> ([a],[x])
-    Sqrt (a,t) x     -> ([a],[x])
-    FAdd (a,t) x y   -> ([a],[x,y])
-    FSub (a,t) x y   -> ([a],[x,y])
-    FMul (a,t) x y   -> ([a],[x,y])
-    FDiv (a,t) x y   -> ([a],[x,y])
-    LdF  (a,t) x y'  -> ([a],x:(ii y'))
-    StF  x y z'      -> ([], x:y:(ii z'))
-    IfEq  x y' b1 b2 -> ([], x:(ii y'))
-    IfLe  x y' b1 b2 -> ([], x:(ii y'))
-    IfGe  x y' b1 b2 -> ([], x:(ii y'))
-    IfFEq  x y b1 b2 -> ([], [x,y])
-    IfFLe  x y b1 b2 -> ([], [x,y])
+    Mov (a,t) x      -> ([a],[x], [],[])
+    Neg (a,t) x      -> ([a],[x], [],[])
+    Add (a,t) x y'   -> ([a],x:(ii y'), [],[])
+    Sub (a,t) x y'   -> ([a],x:(ii y'), [],[])
+    SLL (a,t) x i    -> ([a],[x], [],[])
+    SRA (a,t) x i    -> ([a],[x], [],[])
+    Ld  (a,t) x y'   -> ([a],x:(ii y'), [],[])
+    St  x y z'       -> ([],x:y:(ii z'), [],[])
+    FMov (a,t) x     -> ([],[], [a],[x])
+    FNeg (a,t) x     -> ([],[], [a],[x])
+    Fabs (a,t) x     -> ([],[], [a],[x])
+    Sqrt (a,t) x     -> ([],[], [a],[x])
+    FAdd (a,t) x y   -> ([],[], [a],[x,y])
+    FSub (a,t) x y   -> ([],[], [a],[x,y])
+    FMul (a,t) x y   -> ([],[], [a],[x,y])
+    FDiv (a,t) x y   -> ([],[], [a],[x,y])
+    LdF  (a,t) x y'  -> ([],x:(ii y'), [a],[])
+    StF  x y z'      -> ([],y:(ii z'), [],[x])
+    IfEq  x y' b1 b2 -> ([],x:(ii y'), [],[])
+    IfLe  x y' b1 b2 -> ([],x:(ii y'), [],[])
+    IfGe  x y' b1 b2 -> ([],x:(ii y'), [],[])
+    IfFEq  x y b1 b2 -> ([],[], [], [x,y])
+    IfFLe  x y b1 b2 -> ([],[], [], [x,y])
     CallCls (a,t) x ys zs  -> error (show __FILE__ ++ show __LINE__)
-    CallDir (a,t) l ys zs  -> ([a],ys++zs)
+    CallDir (a,T.Unit) l ys zs  -> ([],ys, [],zs)
+    CallDir (a,T.Float) l ys zs -> ([],ys, [a],zs)
+    CallDir (a,_) l ys zs       -> ([a],ys, [],zs)
     Save    _ _      -> error (show __FILE__ ++ show __LINE__)
     Restore _ _      -> error (show __FILE__ ++ show __LINE__)
     

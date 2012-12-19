@@ -10,30 +10,29 @@ import Control.Monad.State
 -- blockを集める(runしたあとMapにまとめる)
 type MyMonadSS = StateT [(I.Id, Block)] I.IdState
 
-data Fundef = Fundef{fId:: I.Label, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T,
+data Fundef = Fundef{fId:: I.Id, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T,
                      fBlocks :: Mp.Map I.Id Block, fHead :: I.Id, fTails :: [I.Id],
-                     fDefRegs:: [I.Id], fCalls :: [I.Label], fRegMap :: Mp.Map I.Id Int}
-
+                     fDefRegs:: [I.Id], fCalls :: [I.Id], fRegMapI :: Mp.Map I.Id Int, fRegMapF :: Mp.Map I.Id Int}
 -- <<関数>>
 -- 関数のラベル, 整数引数のID, 浮動小数引数のID, 返り値の型
 -- 関数内のBlock群, 関数で始めに呼ばれるBlock, 関数の末尾のBlock群
--- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群, (仮のレジスタ変数を作り、変数からその数値へのMap)
+-- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群, (仮のレジスタ変数を作り、変数からその数値へのMap(Int, Float))
 
-data Block  = Block{bId :: I.Id, {- bFundef:: I.Label, -} bStmts :: [Stmt],
+data Block  = Block{bId :: I.Id, bStmts :: [Stmt],
                     bPreds :: [I.Id], bSuccs :: [I.Id],
-                    bLiveIn :: [I.Id], bLiveOut :: [I.Id]}
--- <<基本ブロック>>
--- BlockのID, このBlockを使用する関数ラベル, このBlock内で発行するStmt群
--- このBlockに入るBlock群, このBlockから続くBlock群 (高々2つ??)
--- このBlockの実行直前の生存変数群、このBlockの実行直後の生存変数群
+                    bLiveInI :: [I.Id], bLiveOutI :: [I.Id],
+                    bLiveInF :: [I.Id], bLiveOutF :: [I.Id]}
 
-data Stmt   = Stmt {{-sId :: I.Id, -}{-sBlock :: I.Id,-} sInst :: Exp,
---                    sPred :: I.Id, sSucc :: I.Id,
-                    sLiveIn :: [I.Id], sLiveOut :: [I.Id]}
 -- <<基本ブロック>>
--- StmtのId, このStmtを使用するBlockID, 命令種
--- このStmtに入るStmt, このStmtから続くStmt
--- このStmtの直前の生存変数群, このStmtの直後の生存変数群
+-- BlockのID, このBlock内で発行するStmt群
+-- このBlockに入るBlock群, このBlockから続くBlock群 (高々2つ??)
+-- このBlockの実行直前の生存変数群、このBlockの実行直後の生存変数群(Int, Float)
+
+data Stmt   = Stmt {sInst :: Exp
+                   , sLiveInI :: [I.Id], sLiveOutI :: [I.Id]
+                   , sLiveInF :: [I.Id], sLiveOutF :: [I.Id]}              
+-- <<基本ブロック>>
+-- 命令種, このStmtの直前の生存変数群, このStmtの直後の生存変数群(Int, Float)
 
 data Exp = Nop
        | Set       (I.Id, T.T) Int
@@ -86,7 +85,7 @@ blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
      bs <- get        -- 関数内のblockを集める     
      return $ Fundef{fId = la, fArgs = is, fFargs = fs, fRet = retT,
                      fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first,
-                     fDefRegs = [], fCalls = [], fRegMap = Mp.empty}
+                     fDefRegs = [], fCalls = [], fRegMapI = Mp.empty, fRegMapF = Mp.empty}
   where dest = (case retT of
                    T.Unit       -> ("$g0", T.Int)
                    T.Float      -> (As.fRegs !! 0, T.Float)
@@ -164,11 +163,11 @@ expToStmt dest now exp = case exp of
 -- live関係は後で追加
 insertBlock :: I.Id -> [Stmt] -> [I.Id] -> [I.Id] -> MyMonadSS ()
 insertBlock b1 ss preds succs = modify ((b1, Block{bId = b1, bStmts = ss, bPreds = preds, bSuccs = succs
-                                                  ,bLiveIn = [], bLiveOut = []}):)
+                                                  ,bLiveInI = [], bLiveOutI = [], bLiveInF = [], bLiveOutF = []}):)
 
 -- live関係は後で追加
 stmten :: Exp -> Stmt
-stmten exp = Stmt{sInst = exp, sLiveIn = [], sLiveOut = []}
+stmten exp = Stmt{sInst = exp, sLiveInI = [], sLiveOutI = [], sLiveInF = [], sLiveOutF = []}
 
 
 -------------------
@@ -177,26 +176,29 @@ stmten exp = Stmt{sInst = exp, sLiveIn = [], sLiveOut = []}
 instance Show Fundef where
   show Fundef{fId = I.Label fname, fArgs = is, fFargs = fs, fRet = retT,
               fBlocks = bmap, fHead = headBlock, fTails = lastBlocks,
-              fDefRegs = regs, fCalls = calls, fRegMap = regMap}
+              fDefRegs = regs, fCalls = calls, fRegMapI = regMapI, fRegMapF = regMapF}
     = "[FUNC_NAME]:"++ fname ++" (I_args):"++show is++" (F_args):"++show fs++" (RET_TYPE):"++show retT
       ++"\n<HEAD>"++ headBlock ++ " <TAILS>"++ show lastBlocks
-      ++"\n<Use_Regs>"++show regs ++" <CALLS>"++ show calls ++ " <RegMap>"++ show (Mp.assocs regMap)
+      ++"\n<Use_Regs>"++show regs ++" <CALLS>"++ show calls ++ " <RegMapI>"++ show (Mp.assocs regMapI)++" <RegMapF>"++ show (Mp.assocs regMapF)
       ++"\n"++ (concatMap show bs)
    where bs = map snd $ Mp.assocs bmap
         
 instance Show Block where
   show Block{bId = bname, bStmts = ss,
              bPreds = preds, bSuccs = succs,
-             bLiveIn = ins, bLiveOut = outs}
+             bLiveInI = insI, bLiveOutI = outsI,
+             bLiveInF = insF, bLiveOutF = outsF}    
     = "   -- BLOCK_ID : "++ bname ++ " --"
       ++"\n   <PREDS>"++ show preds++" <SUCCS>"++ show succs
-      ++"\n   <BIN>"++ show ins++" <BOUT>"++ show outs
+      ++"\n   <BINI>"++ show insI++" <BOUTI>"++ show outsI
+      ++"\n   <BINF>"++ show insF++" <BOUTF>"++ show outsF
       ++"\n"++ (concatMap (\s -> "      "++show s) ss)
   
 instance Show Stmt where
-  show Stmt{sInst = exp, sLiveIn = ins, sLiveOut = outs} 
+  show Stmt{sInst = exp, sLiveInI = insI, sLiveOutI = outsI, sLiveInF = insF, sLiveOutF = outsF} 
    = show exp 
-     ++" <IN>: "++ show ins ++" <OUT>: "++ show outs
+     ++"\n\t\t\t\t\t\t<INI>: "++ show insI ++" <OUTI>: "++ show outsI
+     ++" <INF>: "++ show insF ++" <OUTF>: "++ show outsF     
      ++"\n"
   
 instance Show Exp where  
@@ -229,7 +231,7 @@ instance Show Exp where
      IfGe      x idOrIm b1 b2           -> "IfGe: "++ x ++" "++ show idOrIm ++" "++b1++" "++b2
      IfFEq     x y b1 b2                -> "IfFEq: "++ x ++" "++ y ++" "++b1++" "++b2
      IfFLe     x y b1 b2                -> "IfFLe: "++ x ++" "++ y ++" "++b1++" "++b2
-     CallCls   (x,t) f    is fs         -> "CallCls: ("++ x ++") "++ f ++", (args) "++show is++" "++show fs
-     CallDir   (x,t) (I.Label f) is fs  -> "CallDir: ("++ x ++") "++ f ++", (args) "++show is++" "++show fs
+     CallCls   (x,t) f    is fs         -> "CallCls: ("++ x ++") "++ f ++" "++show is++" "++show fs
+     CallDir   (x,t) (I.Label f) is fs  -> "CallDir: ("++ x ++") "++ f ++" "++show is++" "++show fs
      Save      x var                    -> "Save: "++ x ++" "++ var
      Restore   (x, t) var               -> "Restore: "++ x ++" "++ var
