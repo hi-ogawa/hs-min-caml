@@ -10,9 +10,10 @@ import Control.Monad.State
 -- blockを集める(runしたあとMapにまとめる)
 type MyMonadSS = StateT [(I.Id, Block)] I.IdState
 
-data Fundef = Fundef{fId:: I.Id, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T,
-                     fBlocks :: Mp.Map I.Id Block, fHead :: I.Id, fTails :: [I.Id],
-                     fDefRegs:: [I.Id], fCalls :: [I.Id], fRegMapI :: Mp.Map I.Id Int, fRegMapF :: Mp.Map I.Id Int}
+data Fundef = Fundef{fId:: I.Id, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T
+                    ,fBlocks :: Mp.Map I.Id Block, fHead :: I.Id, fTails :: [I.Id]
+                    ,fUseRegs:: ([I.Id], [I.Id]), fCalls :: [I.Id]
+                    ,fRegMapI :: Mp.Map I.Id Int, fRegMapF :: Mp.Map I.Id Int}
 -- <<関数>>
 -- 関数のラベル, 整数引数のID, 浮動小数引数のID, 返り値の型
 -- 関数内のBlock群, 関数で始めに呼ばれるBlock, 関数の末尾のBlock群
@@ -83,9 +84,9 @@ blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
      (ss, succs)<- asmToBlocks dest [first] bo
      insertBlock first ss [] succs
      bs <- get        -- 関数内のblockを集める     
-     return $ Fundef{fId = la, fArgs = is, fFargs = fs, fRet = retT,
+     return $ Fundef{fId = x, fArgs = is, fFargs = fs, fRet = retT,
                      fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first,
-                     fDefRegs = [], fCalls = [], fRegMapI = Mp.empty, fRegMapF = Mp.empty}
+                     fUseRegs = ([], []), fCalls = [], fRegMapI = Mp.empty, fRegMapF = Mp.empty}
   where dest = (case retT of
                    T.Unit       -> ("$g0", T.Int)
                    T.Float      -> (As.fRegs !! 0, T.Float)
@@ -174,12 +175,13 @@ stmten exp = Stmt{sInst = exp, sLiveInI = [], sLiveOutI = [], sLiveInF = [], sLi
 -- show instance --
 -------------------
 instance Show Fundef where
-  show Fundef{fId = I.Label fname, fArgs = is, fFargs = fs, fRet = retT,
+  show Fundef{fId = fname, fArgs = is, fFargs = fs, fRet = retT,
               fBlocks = bmap, fHead = headBlock, fTails = lastBlocks,
-              fDefRegs = regs, fCalls = calls, fRegMapI = regMapI, fRegMapF = regMapF}
+              fUseRegs = (regsI, regsF), fCalls = calls, fRegMapI = regMapI, fRegMapF = regMapF}
     = "[FUNC_NAME]:"++ fname ++" (I_args):"++show is++" (F_args):"++show fs++" (RET_TYPE):"++show retT
       ++"\n<HEAD>"++ headBlock ++ " <TAILS>"++ show lastBlocks
-      ++"\n<Use_Regs>"++show regs ++" <CALLS>"++ show calls ++ " <RegMapI>"++ show (Mp.assocs regMapI)++" <RegMapF>"++ show (Mp.assocs regMapF)
+      ++"\n<Use_RegsI>"++show regsI ++"<Use_RegsI>"++show regsF ++" <CALLS>"++ show calls 
+      ++"\n<RegMapI>"++ show (Mp.assocs regMapI)++" <RegMapF>"++ show (Mp.assocs regMapF)
       ++"\n"++ (concatMap show bs)
    where bs = map snd $ Mp.assocs bmap
         

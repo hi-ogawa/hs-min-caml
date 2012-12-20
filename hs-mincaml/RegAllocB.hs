@@ -5,7 +5,7 @@ import qualified IdMod as I
 import qualified Asm as As
 import Block
 
-import Data.List (nub)
+import Data.List (nub, delete)
 import qualified Data.Map as Mp
 
 {-
@@ -22,20 +22,22 @@ Stateとして欲しい情報は???
 allocFs :: [Fundef] -> [Fundef]
 allocFs fundefs = map snd $ Mp.assocs mapFun
   where mapFun = foldl (\mapf fundef -> let fundef' = allocF mapf fundef
-                                        in Mp.insert (fId fundef') fundef'
+                                        in Mp.insert (fId fundef') fundef' mapf
                        ) Mp.empty fundefs
 
 allocF :: Mp.Map I.Id Fundef -> Fundef -> Fundef
 allocF mapf f@Fundef{fId = fname, fArgs = is, fFargs = fs, fRet = retT,
                      fBlocks = bmap, {-fHead = first, fTails = tails-}
                     {-fDefRegs = _,fcalls = _,-} fRegMapI = mapI, fRegMapF = mapF} 
-  = f{fBlocks = bmap', fDefRegs = uses}
+  = f{fBlocks = bmap', fUseRegs = (useI, useF)}
   where bmap' = Mp.map (allocB mapf mapI mapF) bmap
-        uses  = concat $ Mp.map gatherUseReg bmap'
+        (useI, useF)  = (\(ls1, ls2) -> (nub $ concat ls1, nub $ concat ls2)) . unzip . map snd . Mp.assocs 
+                        $ Mp.map gatherUseRegB bmap'
             
 allocB :: Mp.Map I.Id Fundef -> Mp.Map I.Id Int -> Mp.Map I.Id Int -> Block -> Block
 allocB mapf mapI mapF blo@Block{bStmts = ss} =
-  concatMap (allocS mapf mapI mapF) ss
+  blo{bStmts = ss'}
+  where ss' = concatMap (allocS mapf mapI mapF) ss
 
 -- このブロック内でSave, Restoreを完結させる。
 -- とりあえず、関数呼び出しの前後でガンガンsave, restoreを詰める。(後で取り除ける)
@@ -44,15 +46,18 @@ allocS :: Mp.Map I.Id Fundef -> Mp.Map I.Id Int -> Mp.Map I.Id Int -> Stmt -> [S
 allocS mapf mapI mapF s@Stmt{sInst = exp
                             , sLiveInI = inI, sLiveOutI = outI
                             , sLiveInF = inF, sLiveOutF = outF} = undefined
-  let exps =
-       case exp of
+  where myFindI x = (\i -> "$r" ++ (show (i+2))) $ (Mp.!) mapI x
+        myFindF x = (\i -> "$f" ++ (show i)) $ (Mp.!) mapF x
+        myFindI' (As.V x) = As.V (myFindI x)
+        myFindI' (As.C i) = As.C i      
+        exps = case exp of
          Nop                         -> [Nop]
-         Set       (x,t) i           -> [Set (myFind mapI mapF x, t) i]
+         Set       (x,t) i           -> [Set (myFindI x, t) i]
          SetF      (x,t) f           -> undefined
          SetL      (x,t) (I.Label l) -> error (show __FILE__ ++ show __LINE__)
          Mov       (x,t) y           -> undefined
          Neg       (x,t) y           -> undefined
-         Add       (x,t) y idOrIm    -> [Add (myFind mapI mapF x, t) (myFind mapI mapF x) (myFind' mapI mapF idOrIm)]
+         Add       (x,t) y idOrIm    -> [Add (myFindI x, t) (myFindI x) (myFindI' idOrIm)]
          Sub       (x,t) y idOrIm    -> undefined
          SLL       (x,t) y i         -> undefined
          SRA       (x,t) y i         -> undefined
@@ -74,20 +79,34 @@ allocS mapf mapI mapF s@Stmt{sInst = exp
          IfFEq     x y b1 b2                -> undefined
          IfFLe     x y b1 b2                -> undefined
          CallCls   (x,t) f    is fs         -> error (show __FILE__ ++ show __LINE__)
-         CallDir   (x,t) (I.Label f) is fs  -> undefined
-           where usesF = searchUseRegF mapf f
+         CallDir   (x,t) (I.Label f) is fs  -> saveEsI ++ saveEsF
+                                               ++ [CallDir (retX,t) (I.Label f) argsI argsF]
+                                               ++ restEsI ++ restEsF
+           where (useI, useF) = searchUseRegF mapf f -- ($r2, $f0 などはこの中に入ってるはず)
+                 saveI = filter (\v -> elem v useI) (delete x outI)    -- 退避すべき変数
+                 saveF = filter (\v -> elem v useF) (delete x outF)    -- 退避すべき変数
+                 saveEsI = map (\v -> Save (myFindI v) v) saveI
+                 saveEsF = map (\v -> Save (myFindF v) v) saveF
+                 restEsI = map (\v -> Restore ((myFindI v), T.Int) v) saveI
+                 restEsF = map (\v -> Restore ((myFindF v), T.Float) v) saveF
+                 argsI  = map myFindI is
+                 argsF  = map myFindF fs
+                 retX = case t of
+                          T.Unit        -> "$g0"
+                          T.Float       -> myFindF x
+                          _             -> myFindI x
          Save      x var                    -> error (show __FILE__ ++ show __LINE__)
          Restore   (x, t) var               -> error (show __FILE__ ++ show __LINE__)
 
-
 -- その関数がどのレジスタを使用しているかを見る。
-searchUseRegF :: Mp.Map I.Id Fundef -> I.Id -> [I.Id]
-searchUseRegF mapf fname | Mp.member fname mapf = 
+searchUseRegF :: Mp.Map I.Id Fundef -> I.Id -> ([I.Id], [I.Id])
+searchUseRegF mapf fname | Mp.notMember fname mapf = (As.iRegs, As.fRegs)
+                         | otherwise               = fUseRegs $ (Mp.!) mapf fname
          
-gatherUseRegB :: Block -> [I.Id]
-gatherUseRegB b = nub . concatMap gatherUseRegS $ bStmts b
+gatherUseRegB :: Block -> ([I.Id], [I.Id])
+gatherUseRegB b = (\(l1, l2) -> (nub $ concat l1, nub $ concat l2)) . unzip . map gatherUseRegS $ bStmts b
 
-gatherUseRegS :: Stmt -> [I.Id]
+gatherUseRegS :: Stmt -> ([I.Id], [I.Id])
 gatherUseRegS s = 
   case sInst s of
     _   -> undefined
