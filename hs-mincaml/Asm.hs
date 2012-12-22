@@ -126,7 +126,25 @@ freeVarExp exp = case exp of
 freeIdIm :: IdOrIm -> [I.Id]
 freeIdIm (V x) = [x]
 freeIdIm (C _) = []
+
+existClosure :: T -> [Fundef] -> Bool
+existClosure e fundefs = any haveClT (e:bodys)
+  where bodys = map body fundefs
   
+haveClT :: T -> Bool
+haveClT e = 
+  case e of
+    Ans exp      -> haveClE exp
+    Let _ exp e' -> haveClE exp || haveClT e'
+  
+haveClE :: Exp -> Bool  
+haveClE exp = 
+  case exp of
+    SetL _              -> True
+    CallCls _ _ _       -> True
+    _                   -> False
+
+
 ----show instance-----------------
 --fundef
 instance Show Fundef where  

@@ -17,7 +17,8 @@ data Fundef = Fundef{fId:: I.Id, fArgs :: [I.Id], fFargs :: [I.Id], fRet::T.T
 -- <<関数>>
 -- 関数のラベル, 整数引数のID, 浮動小数引数のID, 返り値の型
 -- 関数内のBlock群, 関数で始めに呼ばれるBlock, 関数の末尾のBlock群
--- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群, (仮のレジスタ変数を作り、変数からその数値へのMap(Int, Float))
+-- 関数内で使用されるレジスタ群, 関数内で呼び出す関数群(自分自身は除く) 
+-- 仮のレジスタ変数を作り、変数からその数値へのMap(Int, Float)
 
 data Block  = Block{bId :: I.Id, bStmts :: [Stmt],
                     bPreds :: [I.Id], bSuccs :: [I.Id],
@@ -73,7 +74,7 @@ blockMain (main, fundefs) c =
   (fundefs', c')
   where main' = As.Fundef{As.name = I.Label "min_caml_main", As.args = [], As.fargs = [],
                           As.body = main,           As.ret  = T.Unit}
-        (fundefs', c') = runState (evalStateT (mapM blockFun (main' : fundefs)) []) c
+        (fundefs', c') = runState (evalStateT (mapM blockFun (fundefs ++ [main'])) []) c
 
 -- Asm関数 を Block関数に変換
 blockFun :: As.Fundef -> MyMonadSS Fundef
@@ -88,7 +89,7 @@ blockFun As.Fundef{As.name = la@(I.Label x), As.args = is, As.fargs = fs,
                      fBlocks = Mp.fromList bs, fHead = first, fTails = getTails (Mp.fromList bs) first,
                      fUseRegs = ([], []), fCalls = [], fRegMapI = Mp.empty, fRegMapF = Mp.empty}
   where dest = (case retT of
-                   T.Unit       -> ("$g0", T.Int)
+                   T.Unit       -> ("$g0", T.Unit)
                    T.Float      -> (As.fRegs !! 0, T.Float)
                    _            -> (As.iRegs !! 0, T.Int))
                
@@ -234,6 +235,6 @@ instance Show Exp where
      IfFEq     x y b1 b2                -> "IfFEq: "++ x ++" "++ y ++" "++b1++" "++b2
      IfFLe     x y b1 b2                -> "IfFLe: "++ x ++" "++ y ++" "++b1++" "++b2
      CallCls   (x,t) f    is fs         -> "CallCls: ("++ x ++") "++ f ++" "++show is++" "++show fs
-     CallDir   (x,t) (I.Label f) is fs  -> "CallDir: ("++ x ++") "++ f ++" "++show is++" "++show fs
+     CallDir   (x,t) (I.Label f) is fs  -> "CallDir: ("++ x ++": "++show t ++") "++ f ++" "++show is++" "++show fs
      Save      x var                    -> "Save: "++ x ++" "++ var
      Restore   (x, t) var               -> "Restore: "++ x ++" "++ var

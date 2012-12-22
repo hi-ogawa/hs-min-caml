@@ -58,8 +58,8 @@ coloring x = do neighs <- asks (\graph -> St.toList $ graph Mp.! x)
 
 -- 関数の依存関係(呼び出し、呼び出される関係)を求める(ついで)
 setCalls :: Fundef -> Fundef
-setCalls f@Fundef{fBlocks = bmap} = 
-  f{fId = I.Label fname, Calls = calls}
+setCalls f@Fundef{fId = fname, fBlocks = bmap} = 
+  f{fCalls = calls}
   where calls = nub . concatMap (getCalls . snd) $ Mp.toList bmap
         getCalls b = concatMap (\s -> case sInst s of
                                    CallDir _ (I.Label callF) _ _ | callF /= fname -> [callF]

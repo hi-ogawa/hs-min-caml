@@ -29,6 +29,7 @@ import qualified ArgHandle as Arg
 import qualified Block as BL
 import qualified Liveness as LI
 import qualified RegColoring as RC
+import qualified RegAllocB as RB
 
 
 import System.Environment as Sys
@@ -36,6 +37,7 @@ import qualified Data.Map as Mp
 import Control.Exception
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Error
 import qualified Debug.Trace as DT
 import Data.List(isPrefixOf)
 
@@ -76,60 +78,66 @@ test :: Command -> Int -> Int -> String -> Either String String
 test com iter limit contents =
    do let !_ = DT.trace ("parsing...") () 
       (parsedExp, n0, c0)           <- P.scanAndParse contents
-      if com == 0 then return $ show parsedExp else do
+      when (com == 0) (throwError (show parsedExp))
         
       (typedExp, c0')               <- Typi.typiMain parsedExp c0 n0
-      if com == 1 then return $ show typedExp else do      
+      when (com == 1) (throwError (show typedExp))
         
-        -- だめな部分適用
+        -- だめそうな部分適用
       -- let (typedExp', c0'')             =  PE.partMain typedExp c0'
-      -- if com == 2 then return $ show typedExp' else do
+      -- when (com == 2) (throwError (show typedExp'))
         
       -- let (kNizedExp, c1)             =  K.kNizeMain typedExp' c0''
-      -- if com == 3 then return $ show kNizedExp else do
+      -- when (com == 3) (throwError (show kNizedExp))
         
       let (kNizedExp, c1)             =  K.kNizeMain typedExp c0'
-      if com == 2 then return $ show kNizedExp else do
+      when (com == 2) (throwError (show kNizedExp))
         
       let (alphaExp, c2)              =  Al.alphaMain kNizedExp c1
-      if com == 3 then return $ show alphaExp else do          
+      when (com == 3) (throwError (show alphaExp))
         
       let !_ = DT.trace ("iter start...") ()                 
-      let (iteredExp, c3)              =  loopIter iter c2 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
-      -- let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
-      if com == 4 then return $ show iteredExp else do
+      -- let (iteredExp, c3)              =  loopIter iter c2 limit $ EL.elimMain $ B.betaMain $ EE.elimEqExpMain alphaExp
+      let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
+      when (com == 4) (throwError (show iteredExp))
         
       let gloTup                        = G.globalMain iteredExp
       -- let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
-      if com == 5 then return $ show gloTup else do
+      when (com == 5) (throwError (show gloTup))
         
       let (cloExp, fundefs0)          =  C.closMain gloTup iteredExp 
-      if com == 6  then return $ (show cloExp)++(show fundefs0) else do
+      when (com == 6) (throwError (show cloExp ++ show fundefs0))
 
       let ((virExp, fundefs1), c4) = V.virtMain gloTup (cloExp, reverse fundefs0) c3
-      if com == 7 then return $ (show virExp)++(show fundefs1) else do
+      when (com == 7) (throwError (show virExp ++ show fundefs1))
               
       let (simmExp, fundefs2)          =  SI.simmMain (virExp, fundefs1)
-      if com == 8 then return $ (show simmExp)++(show fundefs2) else do
-      -- if com == 8 then return $ show $ aGetFunc "bilinear" fundefs2 else do
+      when (com == 8) (throwError (show simmExp ++ show fundefs2))
         
-      -- block分割 --
-      let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
-      if com == 11 then return $ (show fundefsB) else do
-      -- 生存解析 --
-      let fundefsL          =  LI.liveMain fundefsB
-      if com == 12 then return $ (show fundefsL) else do
-      -- レジスタ彩色的な何か --
-      let fundefsR          =  RC.regColorMain fundefsL
-      if com == 13 then return $ (show fundefsR) else do
-        
-        
-      let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4
-      if com == 9 then return $ (show regExp)++(show fundefs3) else do
-      -- if com == 9 then return $ show $ aGetFunc "bilinear" fundefs3 else do
-        
-      let output                      =  E.emitMain ((\(_,_,_,d)->d) gloTup) prog c5
-      return $ output
+      if not $ A.existClosure simmExp fundefs2 -- closureがなかったらレジスタ彩色しよう
+        then 
+        do -- block分割 --
+          let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
+          when (com == 11) (throwError (show fundefsB))
+          -- 生存解析 --
+          let fundefsL                =  LI.liveMain fundefsB
+          when (com == 12) (throwError (show fundefsL))
+          -- レジスタ彩色的な何か --
+          let fundefsRC               =  RC.regColorMain fundefsL
+          when (com == 13) (throwError (show fundefsRC))
+          -- 実際のレジスタ割り当て的な何か --
+          let fundefsRB               =  RB.allocMain fundefsRC
+          when (com == 14) (throwError (show fundefsRB))
+          
+          return ""
+
+        else 
+        do
+          let (prog@(regExp, fundefs3), c5) =  R.regAllocMain (simmExp, fundefs2) c4
+          when (com == 9) (throwError (show regExp ++ show fundefs3))
+
+          let output                      =  E.emitMain ((\(_,_,_,d)->d) gloTup) prog c5
+          return output
       
 
 -- optimize loop : (elimExExp) => beta => assoc => inline => constfold => elim
