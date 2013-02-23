@@ -101,8 +101,8 @@ test com iter limit contents =
       let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
       when (com == 4) (throwError (show iteredExp))
         
-      let gloTup                        = G.globalMain iteredExp
-      -- let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
+      -- let gloTup                        = G.globalMain iteredExp
+      let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
       when (com == 5) (throwError (show gloTup))
         
       let (cloExp, fundefs0)          =  C.closMain gloTup iteredExp 
@@ -114,7 +114,7 @@ test com iter limit contents =
       let (simmExp, fundefs2)          =  SI.simmMain (virExp, fundefs1)
       when (com == 8) (throwError (show simmExp ++ show fundefs2))
         
-      if not $ A.existClosure simmExp fundefs2 -- closureがなかったらレジスタ彩色しよう
+      if False -- not $ A.existClosure simmExp fundefs2 -- closureがなかったらレジスタ彩色しよう
         then 
         do -- block分割 --
           let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
