@@ -1,0 +1,6 @@
+*.s
+*~
+*.ppm
+doc/
+pcstat.txt
+inststat.txt
