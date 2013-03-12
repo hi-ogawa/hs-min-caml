@@ -30,23 +30,23 @@ emitMain :: G.GloOffset -> A.Prog -> I.Counter -> Output
 emitMain gloOffset prog c = 
   let !_ = DT.trace ("emitting...") () in  
   output
-  where ((_, output), _) =runState(runWriterT (emitMain' gloOffset prog)) ((Mp.empty, []), c)
+  where ((_, output), _) = runState(runWriterT (emitMain' gloOffset prog)) ((Mp.empty, []), c)
     
 emitMain' :: G.GloOffset -> A.Prog -> EmitMonad ()
 emitMain' gloOffset (e, fundefs) = 
-  do tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regZrF          (0::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regZrF          (0::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regOneF         (16256::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regOneF         (0::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regMiOneF       (49024::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regMiOneF       (0::Int)
+  do -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regZrF          (0::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regZrF          (0::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regOneF         (16256::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regOneF         (0::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regMiOneF       (49024::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regMiOneF       (0::Int)
      
-     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA1          (15395::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA1          (55050::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA2          (48716::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA2          (52429::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA3          (48588::Int)
-     tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA3          (52429::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA1          (15395::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA1          (55050::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA2          (48716::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA2          (52429::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfh" A.regIKUTA3          (48588::Int)
+     -- tell $ printf "\t%s\t%s, %d\n"                     "lfl" A.regIKUTA3          (52429::Int)
      
      tell $ printf "\t%s\t%s\n"                         "j" "min_caml_start"
      mapM emitFun fundefs
@@ -83,18 +83,18 @@ writeExp (NonTail a) exp = case exp of
     where i' = fromIntegral i :: Word32
           hi = (i' `div` 0x10000) `mod` 0x10000
           lo = i' `mod` 0x10000
-  A.SetF f              | f == 0.0
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regZrF
-  A.SetF f              | f == 1.0  
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regOneF
-  A.SetF f              | f == -1.0  
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regMiOneF
-  A.SetF f              | f == 0.01
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA1
-  A.SetF f              | f == -0.2
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA2
-  A.SetF f              | f == -0.1  
-                          -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA3
+  -- A.SetF f              | f == 0.0
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regZrF
+  -- A.SetF f              | f == 1.0  
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regOneF
+  -- A.SetF f              | f == -1.0  
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regMiOneF
+  -- A.SetF f              | f == 0.01
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA1
+  -- A.SetF f              | f == -0.2
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA2
+  -- A.SetF f              | f == -0.1  
+  --                         -> do tell $ printf "\t%s\t%s, %s\n"          "fmove" a A.regIKUTA3
   A.SetF f                -> do tell $ printf "\t%s\t%s, %d\n"          "lfh"  a hi
                                 case lo of
                                   0     -> return ()
@@ -112,30 +112,30 @@ writeExp (NonTail a) exp = case exp of
   A.Sub  x (A.C i)        -> tell $ printf "\t%s\t%s, %s, %d\n"         "addi" a x (-i)
   A.SLL  x i              -> tell $ printf "\t%s\t%s, %s, %d\n"         "sll" a x i
   A.SRA  x i              -> tell $ printf "\t%s\t%s, %s, %d\n"         "sra" a x i
-  -- A.Ld   x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ld var"
-  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lw"    a (0::Int) "$r1" "ld var"
-  A.Ld   x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwr" a y x         "ld var"  
+  A.Ld   x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ld var"
+                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lw"    a (0::Int) "$r1" "ld var"
+  -- A.Ld   x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwr" a y x         "ld var"  
   A.Ld   x (A.C i)        -> tell $ printf "\t%s\t%s, %d(%s)\n"         "lw"  a i x
-  -- A.St   x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "st var"
-  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "sw"    x (0::Int) "$r1" "st var"
-  A.St   x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swr" x z y         "st var"  
+  A.St   x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "st var"
+                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "sw"    x (0::Int) "$r1" "st var"
+  -- A.St   x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swr" x z y         "st var"  
   A.St   x y (A.C i)      -> tell $ printf "\t%s\t%s, %d(%s)\n"         "sw" x i y
   A.FMov x | a == x       -> return ()
   A.FMov x                -> tell $ printf "\t%s\t%s, %s\n"             "fmove" a x
   A.FNeg x                -> tell $ printf "\t%s\t%s, %s\n"             "fneg"  a x
-  A.Fabs x                -> tell $ printf "\t%s\t%s, %s\n"             "fabs"  a x  
+  A.Fabs x                -> error "fabs is nothing" -- tell $ printf "\t%s\t%s, %s\n"             "fabs"  a x
   A.Sqrt x                -> tell $ printf "\t%s\t%s, %s\n"             "sqrt"  a x  
   A.FAdd x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "add.s" a x y
   A.FSub x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "sub.s" a x y
   A.FMul x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "mul.s" a x y
   A.FDiv x y              -> tell $ printf "\t%s\t%s, %s, %s\n"         "div.s" a x y
-  -- A.LdF  x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ldf var"
-  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lwcl"  a (0::Int) "$r1" "ldf var"
-  A.LdF  x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwclr" a y x         "ldf var"  
+  A.LdF  x (A.V y)        -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" x y         "ldf var"
+                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "lwcl"  a (0::Int) "$r1" "ldf var"
+  -- A.LdF  x (A.V y)        -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "lwclr" a y x         "ldf var"  
   A.LdF  x (A.C i)        -> tell $ printf "\t%s\t%s, %d(%s)\n"         "lwcl" a i x                     
-  -- A.StF  x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "stf var"
-  --                               tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "swcl"  x (0::Int) "$r1" "stf var"
-  A.StF  x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swclr" x z y        "stf var"  
+  A.StF  x y (A.V z)      -> do tell $ printf "\t%s\t%s, %s, %s\t!%s\n"         "addu" "$r1" y z         "stf var"
+                                tell $ printf "\t%s\t%s, %d(%s)\t!%s\n"         "swcl"  x (0::Int) "$r1" "stf var"
+  -- A.StF  x y (A.V z)      -> tell $ printf "\t%s\t%s, %s(%s)\t!%s\n"    "swclr" x z y        "stf var"  
   A.StF  x y (A.C i)      -> tell $ printf "\t%s\t%s, %d(%s)\n"         "swcl" x i y  
   A.IfEq x y'@(A.V y) e1 e2       -> ifNonTail x y' e1 e2 "beq"  "bne"  a
   A.IfEq x y'@(A.C i) e1 e2       -> ifNonTail x y' e1 e2 "beqi" "bnei" a  

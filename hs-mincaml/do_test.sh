@@ -10,7 +10,7 @@ function compile(){
     FILE=$1
     INLINE=$2
     echo "** COMPILE **" >&2
-    ${MINCAMLHS} --file "${FILE}" --inline "${INLINE}" --iter 1000
+    ${MINCAMLHS} --file "${FILE}" --inline "${INLINE}" --iter 0
 }
 function simulate(){
     FILE=$1

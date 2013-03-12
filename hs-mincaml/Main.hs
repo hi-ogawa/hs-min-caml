@@ -26,10 +26,10 @@ import qualified RegAlloc as R
 import qualified Emit as E
 import qualified ElimJump as EJ
 import qualified ArgHandle as Arg
-import qualified Block as BL
-import qualified Liveness as LI
-import qualified RegColoring as RC
-import qualified RegAllocB as RB
+-- import qualified Block as BL
+-- import qualified Liveness as LI
+-- import qualified RegColoring as RC
+-- import qualified RegAllocB as RB
 
 
 import System.Environment as Sys
@@ -101,8 +101,8 @@ test com iter limit contents =
       let (iteredExp, c3)              =  loopIter iter c2 limit alphaExp
       when (com == 4) (throwError (show iteredExp))
         
-      -- let gloTup                        = G.globalMain iteredExp
-      let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
+      let gloTup                        = G.globalMain iteredExp
+      -- let gloTup                 = (Mp.empty, Mp.empty, Mp.empty, 4) :: G.GloTup
       when (com == 5) (throwError (show gloTup))
         
       let (cloExp, fundefs0)          =  C.closMain gloTup iteredExp 
@@ -116,18 +116,18 @@ test com iter limit contents =
         
       if False -- not $ A.existClosure simmExp fundefs2 -- closureがなかったらレジスタ彩色しよう
         then 
-        do -- block分割 --
-          let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
-          when (com == 11) (throwError (show fundefsB))
-          -- 生存解析 --
-          let fundefsL                =  LI.liveMain fundefsB
-          when (com == 12) (throwError (show fundefsL))
-          -- レジスタ彩色的な何か --
-          let fundefsRC               =  RC.regColorMain fundefsL
-          when (com == 13) (throwError (show fundefsRC))
-          -- 実際のレジスタ割り当て的な何か --
-          let fundefsRB               =  RB.allocMain fundefsRC
-          when (com == 14) (throwError (show fundefsRB))
+        -- do -- block分割 --
+        --   let (fundefsB, cB)          =  BL.blockMain (simmExp, fundefs2) c4
+        --   when (com == 11) (throwError (show fundefsB))
+        --   -- 生存解析 --
+        --   let fundefsL                =  LI.liveMain fundefsB
+        --   when (com == 12) (throwError (show fundefsL))
+        --   -- レジスタ彩色的な何か --
+        --   let fundefsRC               =  RC.regColorMain fundefsL
+        --   when (com == 13) (throwError (show fundefsRC))
+        --   -- 実際のレジスタ割り当て的な何か --
+        --   let fundefsRB               =  RB.allocMain fundefsRC
+        --   when (com == 14) (throwError (show fundefsRB))
           
           return ""
 

@@ -16,10 +16,10 @@
 (* let rec xor a b = a <> b in *)
 
 (* 浮動小数基本演算2 *)
-(* let rec fabs a = *)
-(*   if a < 0.0 then -. a *)
-(*   else a *)
-(* in *)
+let rec fabs a =
+  if a < 0.0 then -. a
+  else a
+in
 let rec abs_float x = fabs x in
 let rec fneg a = -. a in
 let rec fhalf a = a *. 0.5 in
@@ -136,7 +136,7 @@ let rec read_float_token1 in_token prev =
     (if in_token then c else read_float_token1 false c)
   else
     ((if read_float_s.(0) = 0 then
-			(* prev == '-' *)
+	(* prev == '-' *)
 	(if prev = 45 then read_float_s.(0) <- (-1) else read_float_s.(0) <- (1))
       else
 	());
@@ -212,7 +212,7 @@ let rec div_sub a b left =
 in
 
 let rec div a b =
-	(* bは0ではない *)
+  (* bは0ではない *)
   let abs_a = if a >= 0 then a else -a in
   let abs_b = if b >= 0 then b else -b in
   if abs_a < abs_b then
@@ -239,7 +239,7 @@ let rec print_int x =
   if x < 0 then
     (print_char 45; print_int (-x))
   else
-    		(* 100000000の位を表示 *)
+    (* 100000000の位を表示 *)
     let tx = div_binary_search x 100000000 0 3 in
     let dx = tx * 100000000 in
     let x = x - dx in
@@ -247,7 +247,7 @@ let rec print_int x =
       if tx <= 0 then false
       else (print_char (48 + tx); true) in
 
-    		(* 10000000の位を表示 *)
+    (* 10000000の位を表示 *)
     let tx = div_binary_search x 10000000 0 10 in
     let dx = tx * 10000000 in
     let x = x - dx in
@@ -261,7 +261,7 @@ let rec print_int x =
     	(print_char (48 + tx); true) in
 
     (* let flg = false in *)
-		(* 1000000の位を表示 *)
+    (* 1000000の位を表示 *)
     let tx = div_binary_search x 1000000 0 10 in
     let dx = tx * 1000000 in
     let x = x - dx in
@@ -274,7 +274,7 @@ let rec print_int x =
       else
 	(print_char (48 + tx); true) in
 
-		(* 100000の位を表示 *)
+    (* 100000の位を表示 *)
     let tx = div_binary_search x 100000 0 10 in
     let dx = tx * 100000 in
     let x = x - dx in
@@ -287,7 +287,7 @@ let rec print_int x =
       else
 	(print_char (48 + tx); true) in
 
-		(* 10000の位を表示 *)
+    (* 10000の位を表示 *)
     let tx = div_binary_search x 10000 0 10 in
     let dx = tx * 10000 in
     let x = x - dx in
@@ -300,7 +300,7 @@ let rec print_int x =
       else
 	(print_char (48 + tx); true) in
 
-		(* 1000の位を表示 *)
+    (* 1000の位を表示 *)
     let tx = div_binary_search x 1000 0 10 in
     let dx = tx * 1000 in
     let x = x - dx in
@@ -312,7 +312,7 @@ let rec print_int x =
 	    false)
       else
 	(print_char (48 + tx); true) in
-		(* 100の位を表示 *)
+    (* 100の位を表示 *)
     let tx = div_binary_search x 100 0 10 in
     let dx = tx * 100 in
     let x = x - dx in
@@ -324,7 +324,7 @@ let rec print_int x =
 	    false)
       else
 	(print_char (48 + tx); true) in
-		(* 10の位を表示 *)
+    (* 10の位を表示 *)
     let tx = div_binary_search x 10 0 10 in
     let dx = tx * 10 in
     let x = x - dx in
@@ -336,7 +336,7 @@ let rec print_int x =
 	    false)
       else
 	(print_char (48 + tx); true) in
-		(* 1の位を表示 *)
+    (* 1の位を表示 *)
     print_char (48 + x)
 in
 let rec print_newline () =

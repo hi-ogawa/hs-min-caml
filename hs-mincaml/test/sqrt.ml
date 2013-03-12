@@ -1,5 +1,5 @@
 let rec test_print i =
-  if i <= 100.0
+  if i <= 256.0
   then
     (print_int (int_of_float (sqrt i));
      print_newline ();
@@ -8,5 +8,3 @@ let rec test_print i =
     ()
 in
 test_print 1.0
-
-

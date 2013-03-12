@@ -7,15 +7,15 @@ string r_type(UI op, UI rs, UI rt, UI rd, UI sh, UI fu){
   string bin("");
   int i;
   for(i=0; i < 6; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=6; i < 11; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=11; i < 16; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=16; i < 21; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=21; i < 26; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=26; i < 32; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
   return bin;
 }
@@ -25,11 +25,11 @@ string i_type(UI op, UI rs, UI rt, UI im){
   string bin("");
   int i;
   for(i=0; i < 16; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=16; i < 21; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=21; i < 26; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=26; i < 32; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
   return bin;
 }
@@ -39,7 +39,7 @@ string j_type(UI op, UI im){
   string bin("");
   int i;
   for(i=0; i < 26; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
-  bin = " " + bin;
+  // bin = " " + bin;
   for(i=26; i < 32; i++){ bin = (((binui >> i) & 0x01) ? "1" : "0") + bin;}
   return bin;
 }

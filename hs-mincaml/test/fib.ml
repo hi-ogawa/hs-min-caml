@@ -3,4 +3,4 @@ let rec fib x =
   else
     fib(x-1) + fib(x-2)
 in
-print_int (fib 15)
+print_char (fib 10)

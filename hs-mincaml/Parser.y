@@ -50,7 +50,7 @@ not     { NOT }
 "fisneg"        { FISNEG }
 "fiszero"       { FISZERO }
 "xor"           { XOR }
-"fabs"		{ FABS }
+-- "fabs"		{ FABS }
 ---------------
 "sqrt"  { SQRT }
 if	{ IF }
@@ -105,7 +105,7 @@ E :: { S.T }
         | "fisneg" SimpleE              { S.Not (S.Le (S.Float 0.0) $2) }
         | "fiszero"SimpleE              { S.Eq $2 (S.Float 0.0) }
         | "xor"    SimpleE SimpleE      { S.Not (S.Eq $2 $3) }
-	| "fabs"   SimpleE		{ S.Fabs $2 }
+	-- | "fabs"   SimpleE		{ S.Fabs $2 }
         -- expansion --
         | "fun" FormArgE "->" E {% do{ newf <- (lift.lift) $ I.genNewId "lambda"
                                      ; newt <- (lift) T.genTypeVar

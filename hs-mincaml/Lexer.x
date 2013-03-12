@@ -56,7 +56,7 @@ $white+		;
 "fisneg"        { mkT FISNEG    }
 "fiszero"       { mkT FISZERO   }
 "xor"           { mkT XOR       }
-"fabs"		   { mkT FABS	}
+-- "fabs"		   { mkT FABS }
 ----------------
 "sqrt"		{ mkT SQRT }
 "if"		{ mkT IF }
@@ -172,7 +172,7 @@ data Token = INT Int
            | LPAREN | RPAREN 
            | EOF 
            | FEQUAL | FLESS | FISPOS | FISNEG | FISZERO | XOR
-	   | FABS
+  	   | FABS
            deriving (Show, Eq)
                     
 ----parserで使う

@@ -30,5 +30,6 @@ sim:
 
 clean:
 	make clean-hi-o
-	rm -rf Main Lexer.hs Parser.hs
+	rm -rf Main
+	# rm -rf Lexer.hs Parser.hs
 	cd ../simulator; make clean
